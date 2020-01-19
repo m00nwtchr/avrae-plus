@@ -6,9 +6,11 @@ package io.github.lmarianski.avraeplus;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-import com.mongodb.MongoClient;
+import com.mongodb.*;
 
 import org.javacord.api.*;
+import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.PermissionType;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
@@ -27,8 +29,12 @@ public class Main implements CommandExecutor {
     public static CommandHandler cmdHandler;
     public static MongoClient mongoClient;
 
+    public static DB serverTomeDB;
+
     public static void main(String[] args) {
         mongoClient = new MongoClient();
+        serverTomeDB = mongoClient.getDB("serverTomeDB");
+
         bot = new DiscordApiBuilder().setToken(DISCORD_BOT_TOKEN).login().join();
         cmdHandler = new JavacordHandler(bot);
 
@@ -37,13 +43,25 @@ public class Main implements CommandExecutor {
         cmdHandler.registerCommand(new Main());
     }
 
-    public static void getServerTomes(final Server server) {
-        
+    public static ArrayList<String> getServerTomes(final Server server) {
+        DBCollection serverCol = serverTomeDB.getCollection(server.getIdAsString());
+
+        ArrayList<String> list = new ArrayList<String>(serverCol.find().toArray().stream().map(el -> el.get("_id")).collect(Collectors.toList()));
+
+        return list;
     }
 
     @Command(aliases = "addtome", description = "Adds a tome to this bots database for this server")
-    public void onAddTomeCommand(String[] args) throws Exception {
-        
+    public void onAddTomeCommand(String[] args, Server server) throws Exception {
+        DBCollection serverCol = serverTomeDB.getCollection(server.getIdAsString());
+
+        serverCol.insert(new BasicDBObject("_id", args[0]));
+    }
+
+    @Command(aliases = "listtomes", description = "Adds a tome to this bots database for this server")
+    public void onListTomes(String[] args, Server server, TextChannel channel) throws Exception {
+        channel.sendMessage(new EmbedBuilder()
+        .setDescription(String.join("\n", getServerTomes(server))));
     }
 
     @Command(aliases = {"spelllist", "spells", "sl"}, description = "Pong!")
