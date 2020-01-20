@@ -132,7 +132,7 @@ public class Main implements CommandExecutor {
     public void onAddTomeCommand(String[] args, Server server, TextChannel channel) throws Exception {
         MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
 
-        if (AvraeClient.getTome(args[0]) != null) {
+        if (AvraeClient.getTome(args[0]) == null) {
             channel.sendMessage(new EmbedBuilder()
                     .setDescription("Invalid tome id!")
             );
