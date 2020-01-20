@@ -11,7 +11,7 @@ import java.util.Objects;
 
 public class AvraeClient {
 
-    public static final String API_ENDPOINT = "https://api.avrae.io";
+    public static final String API_ENDPOINT = "http://api.avrae.io";
 
     public static Tome.Spell[] getSRD() {
         return Objects.requireNonNull(getTome("srd")).spells;
