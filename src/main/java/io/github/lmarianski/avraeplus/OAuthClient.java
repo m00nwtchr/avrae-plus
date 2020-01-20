@@ -32,7 +32,7 @@ public class OAuthClient {
             }
 
             ProcessBuilder builder = new ProcessBuilder(
-                    "curl", "https://discordapp.com/api/oauth2/token",
+                    "curl", API_ENDPOINT + "/oauth2/token",
                     "-d", "grant_type=client_credentials&scope=identify",
                     "--header", "Authorization: Basic "+Base64.getEncoder().encodeToString((CLIENT_ID+":"+CLIENT_SECRET).getBytes(StandardCharsets.UTF_8))
             );
