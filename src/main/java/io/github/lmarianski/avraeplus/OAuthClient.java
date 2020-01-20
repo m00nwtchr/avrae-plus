@@ -31,41 +31,53 @@ public class OAuthClient {
                 return lastToken;
             }
 
-            conn = (HttpURLConnection) new URL(API_ENDPOINT + "/oauth2/token").openConnection();
-            //Authenticator.setDefault(new PasswordAuthenticator(CLIENT_ID, CLIENT_SECRET));
+            ProcessBuilder builder = new ProcessBuilder(
+                    "curl", "https://discordapp.com/api/oauth2/token",
+                    "-d", "grant_type=client_credentials&scope=identify",
+                    "--header", "Authorization: Basic "+Base64.getEncoder().encodeToString((CLIENT_ID+":"+CLIENT_SECRET).getBytes(StandardCharsets.UTF_8))
+            );
 
-            String formData = String.format("grant_type=%s&scope=%s",
-                    "client_credentials", "identify");
+            Process p = builder.start();
 
-            byte[] postData = formData.getBytes(StandardCharsets.UTF_8);
-            int dataLength = postData.length;
 
-            conn.setRequestMethod("POST");
 
-            //conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            //conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
-            conn.setRequestProperty("Authorization", "Basic NjY4MjMyNDk1MTQ1NDE4NzY0OnNGcWNSVlJlVndQR2tpY2RWVmI2UVlMZUJHMlEzQ2Jh");
-            conn.setRequestProperty("charset", "utf-8");
+//            conn = (HttpURLConnection) new URL(API_ENDPOINT + "/oauth2/token").openConnection();
+//            //Authenticator.setDefault(new PasswordAuthenticator(CLIENT_ID, CLIENT_SECRET));
+//
+//            String formData = String.format("grant_type=%s&scope=%s",
+//                    "client_credentials", "identify");
+//
+//            byte[] postData = formData.getBytes(StandardCharsets.UTF_8);
+//            int dataLength = postData.length;
+//
+//            conn.setRequestMethod("POST");
+//
+//            //conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+//            //conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
+//            conn.setRequestProperty("Authorization", "Basic "+Base64.getEncoder().encodeToString((CLIENT_ID+":"+CLIENT_SECRET).getBytes(StandardCharsets.UTF_8)));
+//            conn.setRequestProperty("charset", "utf-8");
+//
+//            conn.setDoInput(true);
+//            conn.setDoOutput(true);
+//
+//            IOUtils.write(postData, conn.getOutputStream());
 
-            conn.setDoInput(true);
-            conn.setDoOutput(true);
 
-            IOUtils.write(postData, conn.getOutputStream());
-
-            lastToken = Token.fromJSON(IOUtils.toString(conn.getInputStream(), StandardCharsets.UTF_8));
+            lastToken = Token.fromJSON(IOUtils.toString(p.getInputStream(), StandardCharsets.UTF_8));
+            //lastToken = Token.fromJSON(IOUtils.toString(conn.getInputStream(), StandardCharsets.UTF_8));
             lastTokenTime = System.currentTimeMillis();
 
             //Authenticator.setDefault(null);
             return lastToken;
         } catch (Exception e) {
             e.printStackTrace();
-            if (conn != null) {
-                try {
-                    System.err.println(IOUtils.toString(conn.getErrorStream(), StandardCharsets.UTF_8));
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
+//            if (conn != null) {
+//                try {
+//                    System.err.println(IOUtils.toString(conn.getErrorStream(), StandardCharsets.UTF_8));
+//                } catch (Exception ex) {
+//                    ex.printStackTrace();
+//                }
+//            }
         }
         return null;
     }
