@@ -1,23 +1,28 @@
 package io.github.lmarianski.avraeplus;
 
-import java.io.*;
-import java.net.*;
-import java.nio.Buffer;
+import com.google.gson.annotations.SerializedName;
 
-import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.InputStreamReader;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.PasswordAuthentication;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 public class OAuthClient {
 
     public static final String API_ENDPOINT  = "https://discordapp.com/api";
-    public static final String CLIENT_ID     = "@discordClientId@";
-    public static final String CLIENT_SECRET = "@discordClientSecret@";
+    public static String CLIENT_ID;
+    public static String CLIENT_SECRET;
 
-    public static JSONObject lastToken;
+    public static Token lastToken;
     public static long lastTokenTime;
 
-    public static JSONObject getToken() throws Exception {
+    public static Token getToken() throws Exception {
 
-        if (lastToken != null && System.currentTimeMillis() <= lastToken.getInt("expires_in")+lastTokenTime) {
+        if (lastToken != null && System.currentTimeMillis() <= lastToken.expiresIn+lastTokenTime) {
             return lastToken;
         }
 
@@ -28,9 +33,7 @@ public class OAuthClient {
         String formData = String.format("grant_type=%s&scope=%s",
             "client_credentials", "identify");
 
-        System.out.println(formData);
-
-        byte[] postData = formData.getBytes("UTF8");
+        byte[] postData = formData.getBytes(StandardCharsets.UTF_8);
         int dataLength = postData.length;
 
         conn.setRequestMethod("POST");
@@ -50,39 +53,24 @@ public class OAuthClient {
 
         BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 
-        lastToken = new JSONObject(br.readLine());
+        lastToken = Token.fromJSON(br.readLine());
         lastTokenTime = System.currentTimeMillis();
-
         return lastToken;
     }
 
-    // public static String exchangeCode(String code) throws Exception {
-    //     HttpURLConnection conn = (HttpURLConnection)new URL(API_ENDPOINT+"/oauth2/token").openConnection();
+    public static class Token {
 
-    //     String formData = String.format("client_id=%s&client_secret=%s&code=%s&grant_type=%s&scope=%s&redirect_uri=%s",
-    //         CLIENT_ID, CLIENT_SECRET, code, "authorization_code", "identify", "http%3A%2F%2Flocalhost");
+        @SerializedName("access_token")
+        public String accessToken;
+        public String scope;
+        @SerializedName("token_type")
+        public String tokenType;
+        public int expiresIn;
 
-    //     System.out.println(formData);
-
-    //     byte[] postData = formData.getBytes("UTF8");
-    //     int dataLength = postData.length;
-
-    //     conn.setRequestMethod("POST");
-
-    //     conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-    //     conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
-    //     conn.setRequestProperty("charset", "utf-8");
-
-    //     conn.setDoInput(true);
-    //     conn.setDoOutput(true);
-
-    //     try(DataOutputStream wr = new DataOutputStream(conn.getOutputStream())) {
-    //         wr.write(postData);
-    //     }
-
-    //     BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-    //     return br.readLine();
-    // }
+        public static Token fromJSON(String json) {
+            return Main.gson.fromJson(json, Token.class);
+        }
+    }
 
     public static class DiscordAuthenticator extends Authenticator {
         @Override
