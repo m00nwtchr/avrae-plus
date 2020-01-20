@@ -25,7 +25,6 @@ public class AvraeClient {
 
             ProcessBuilder builder = new ProcessBuilder(
                     "curl", API_ENDPOINT+"/homebrew/spells/"+id,
-                    "-d", "grant_type=client_credentials&scope=identify",
                     "--header", "Authorization: "+OAuthClient.getToken().accessToken
             );
 
