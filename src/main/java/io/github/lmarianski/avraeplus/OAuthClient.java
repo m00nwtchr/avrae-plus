@@ -13,6 +13,7 @@ import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 public class OAuthClient {
 
@@ -31,7 +32,7 @@ public class OAuthClient {
             }
 
             conn = (HttpURLConnection) new URL(API_ENDPOINT + "/oauth2/token").openConnection();
-            Authenticator.setDefault(new PasswordAuthenticator(CLIENT_ID, CLIENT_SECRET));
+            //Authenticator.setDefault(new PasswordAuthenticator(CLIENT_ID, CLIENT_SECRET));
 
             String formData = String.format("grant_type=%s&scope=%s",
                     "client_credentials", "identify");
@@ -41,9 +42,10 @@ public class OAuthClient {
 
             conn.setRequestMethod("POST");
 
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
-            conn.setRequestProperty("Charset", "utf-8");
+            //conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            //conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
+            conn.setRequestProperty("Authorization", "Basic "+Base64.getEncoder().encodeToString((CLIENT_ID+":"+CLIENT_SECRET).getBytes(StandardCharsets.UTF_8)));
+            conn.setRequestProperty("charset", "utf-8");
 
             conn.setDoInput(true);
             conn.setDoOutput(true);
@@ -53,7 +55,7 @@ public class OAuthClient {
             lastToken = Token.fromJSON(IOUtils.toString(conn.getInputStream(), StandardCharsets.UTF_8));
             lastTokenTime = System.currentTimeMillis();
 
-            Authenticator.setDefault(null);
+            //Authenticator.setDefault(null);
             return lastToken;
         } catch (Exception e) {
             e.printStackTrace();
