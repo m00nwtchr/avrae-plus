@@ -60,8 +60,9 @@ public class Main implements CommandExecutor {
         gson = new GsonBuilder()
                 .create();
 
-        mongoClient = env.containsKey("MONGODB_URI") ? new MongoClient(new MongoClientURI(env.get("MONGODB_URI"))) : new MongoClient();
-        serverTomeDB = mongoClient.getDB("serverTomeDB");
+        MongoClientURI mongoClientURI = env.containsKey("MONGODB_URI") ? new MongoClientURI(env.get("MONGODB_URI")) : null;
+        mongoClient = mongoClientURI != null ? new MongoClient(mongoClientURI) : new MongoClient();
+        serverTomeDB = mongoClient.getDB(mongoClientURI.getDatabase() != null ? mongoClientURI.getDatabase() : "serverTomeDB");
 
         bot = new DiscordApiBuilder().setToken(DISCORD_BOT_TOKEN).login().join();
         cmdHandler = new JavacordHandler(bot);
