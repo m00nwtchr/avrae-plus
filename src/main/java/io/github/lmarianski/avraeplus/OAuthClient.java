@@ -2,6 +2,7 @@ package io.github.lmarianski.avraeplus;
 
 import com.google.gson.annotations.SerializedName;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStreamReader;
@@ -27,8 +28,7 @@ public class OAuthClient {
         }
 
         HttpURLConnection conn = (HttpURLConnection)new URL(API_ENDPOINT+"/oauth2/token").openConnection();
-
-        conn.setAuthenticator(new DiscordAuthenticator());
+        Authenticator.setDefault(new PasswordAuthenticator(CLIENT_ID, CLIENT_SECRET));
 
         String formData = String.format("grant_type=%s&scope=%s",
             "client_credentials", "identify");
@@ -42,8 +42,6 @@ public class OAuthClient {
         conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
         conn.setRequestProperty("Charset", "utf-8");
 
-        conn.setAuthenticator(new DiscordAuthenticator());
-
         conn.setDoInput(true);
         conn.setDoOutput(true);
 
@@ -55,6 +53,8 @@ public class OAuthClient {
 
         lastToken = Token.fromJSON(br.readLine());
         lastTokenTime = System.currentTimeMillis();
+
+        Authenticator.setDefault(null);
         return lastToken;
     }
 
@@ -72,10 +72,19 @@ public class OAuthClient {
         }
     }
 
-    public static class DiscordAuthenticator extends Authenticator {
+    public static class PasswordAuthenticator extends Authenticator {
+
+        private final String login;
+        private final char[] password;
+
+        public PasswordAuthenticator(String login, String password) {
+            this.login = login;
+            this.password = password.toCharArray();
+        }
+
         @Override
         protected PasswordAuthentication getPasswordAuthentication() {
-            return new PasswordAuthentication(CLIENT_ID, CLIENT_SECRET.toCharArray());
+            return new PasswordAuthentication(login, password);
         }
     }
 }
