@@ -5,10 +5,7 @@ package io.github.lmarianski.avraeplus;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.MongoClient;
+import com.mongodb.*;
 import de.btobastian.sdcf4j.Command;
 import de.btobastian.sdcf4j.CommandExecutor;
 import de.btobastian.sdcf4j.CommandHandler;
@@ -28,6 +25,8 @@ import org.javacord.api.event.message.reaction.ReactionAddEvent;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.util.event.ListenerManager;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -51,7 +50,7 @@ public class Main implements CommandExecutor {
 
     public static final HashMap<Long, HashMap<String, ArrayList<Tome.Spell>>> SERVER_SPELL_MAP = new HashMap<>();
 
-    public static void main(String[] args) throws UnknownHostException {
+    public static void main(String[] args) throws UnknownHostException, URISyntaxException {
         Map<String, String> env = System.getenv();
 
         DISCORD_BOT_TOKEN         = env.get("DISCORD_BOT_TOKEN");
@@ -61,7 +60,7 @@ public class Main implements CommandExecutor {
         gson = new GsonBuilder()
                 .create();
 
-        mongoClient = env.containsKey("MONGODB_URI") ? new MongoClient(env.get("MONGODB_URI")) : new MongoClient();
+        mongoClient = env.containsKey("MONGODB_URI") ? new MongoClient(new MongoClientURI(env.get("MONGODB_URI"))) : new MongoClient();
         serverTomeDB = mongoClient.getDB("serverTomeDB");
 
         bot = new DiscordApiBuilder().setToken(DISCORD_BOT_TOKEN).login().join();
