@@ -48,9 +48,7 @@ public class OAuthClient {
             conn.setDoInput(true);
             conn.setDoOutput(true);
 
-            try (DataOutputStream wr = new DataOutputStream(conn.getOutputStream())) {
-                wr.write(postData);
-            }
+            IOUtils.write(postData, conn.getOutputStream());
 
             lastToken = Token.fromJSON(IOUtils.toString(conn.getInputStream(), StandardCharsets.UTF_8));
             lastTokenTime = System.currentTimeMillis();
@@ -86,8 +84,8 @@ public class OAuthClient {
 
     public static class PasswordAuthenticator extends Authenticator {
 
-        private final String login;
-        private final char[] password;
+        private String login;
+        private char[] password;
 
         public PasswordAuthenticator(String login, String password) {
             this.login = login;
