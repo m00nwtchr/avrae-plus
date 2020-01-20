@@ -5,6 +5,7 @@ import com.google.gson.annotations.SerializedName;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Authenticator;
 import java.net.HttpURLConnection;
@@ -21,41 +22,54 @@ public class OAuthClient {
     public static Token lastToken;
     public static long lastTokenTime;
 
-    public static Token getToken() throws Exception {
+    public static Token getToken() {
+        HttpURLConnection conn = null;
+        try {
+            if (lastToken != null && System.currentTimeMillis() <= lastToken.expiresIn + lastTokenTime) {
+                return lastToken;
+            }
 
-        if (lastToken != null && System.currentTimeMillis() <= lastToken.expiresIn+lastTokenTime) {
+            conn = (HttpURLConnection) new URL(API_ENDPOINT + "/oauth2/token").openConnection();
+            Authenticator.setDefault(new PasswordAuthenticator(CLIENT_ID, CLIENT_SECRET));
+
+            String formData = String.format("grant_type=%s&scope=%s",
+                    "client_credentials", "identify");
+
+            byte[] postData = formData.getBytes(StandardCharsets.UTF_8);
+            int dataLength = postData.length;
+
+            conn.setRequestMethod("POST");
+
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
+            conn.setRequestProperty("Charset", "utf-8");
+
+            conn.setDoInput(true);
+            conn.setDoOutput(true);
+
+            try (DataOutputStream wr = new DataOutputStream(conn.getOutputStream())) {
+                wr.write(postData);
+            }
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+
+            lastToken = Token.fromJSON(br.readLine());
+            lastTokenTime = System.currentTimeMillis();
+
+            Authenticator.setDefault(null);
             return lastToken;
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (conn != null) {
+                try {
+                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                    System.err.println(br.readLine());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
         }
-
-        HttpURLConnection conn = (HttpURLConnection)new URL(API_ENDPOINT+"/oauth2/token").openConnection();
-        Authenticator.setDefault(new PasswordAuthenticator(CLIENT_ID, CLIENT_SECRET));
-
-        String formData = String.format("grant_type=%s&scope=%s",
-            "client_credentials", "identify");
-
-        byte[] postData = formData.getBytes(StandardCharsets.UTF_8);
-        int dataLength = postData.length;
-
-        conn.setRequestMethod("POST");
-
-        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
-        conn.setRequestProperty("Charset", "utf-8");
-
-        conn.setDoInput(true);
-        conn.setDoOutput(true);
-
-        try(DataOutputStream wr = new DataOutputStream(conn.getOutputStream())) {
-            wr.write(postData);
-        }
-
-        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-
-        lastToken = Token.fromJSON(br.readLine());
-        lastTokenTime = System.currentTimeMillis();
-
-        Authenticator.setDefault(null);
-        return lastToken;
+        return null;
     }
 
     public static class Token {
