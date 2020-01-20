@@ -44,7 +44,7 @@ public class OAuthClient {
 
             //conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             //conn.setRequestProperty("Content-Length", Integer.toString(dataLength));
-            conn.setRequestProperty("Authorization", "Basic "+Base64.getEncoder().encodeToString((CLIENT_ID+":"+CLIENT_SECRET).getBytes(StandardCharsets.UTF_8)));
+            conn.setRequestProperty("Authorization", "Basic NjY4MjMyNDk1MTQ1NDE4NzY0OnNGcWNSVlJlVndQR2tpY2RWVmI2UVlMZUJHMlEzQ2Jh");
             conn.setRequestProperty("charset", "utf-8");
 
             conn.setDoInput(true);
