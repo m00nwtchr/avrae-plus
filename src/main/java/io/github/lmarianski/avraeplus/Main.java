@@ -3,15 +3,23 @@
  */
 package io.github.lmarianski.avraeplus;
 
+import com.google.common.collect.Streams;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.mongodb.*;
+import com.mongodb.BasicDBObject;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import de.btobastian.sdcf4j.Command;
 import de.btobastian.sdcf4j.CommandExecutor;
 import de.btobastian.sdcf4j.CommandHandler;
 import de.btobastian.sdcf4j.handler.JavacordHandler;
 import io.github.lmarianski.avraeplus.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
+import org.bson.BsonDocument;
+import org.bson.Document;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.TextChannel;
@@ -20,12 +28,9 @@ import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.PermissionType;
 import org.javacord.api.entity.permission.PermissionsBuilder;
 import org.javacord.api.entity.server.Server;
-import org.javacord.api.entity.user.UserStatus;
-import org.javacord.api.event.message.reaction.ReactionAddEvent;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.util.event.ListenerManager;
 
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
@@ -42,7 +47,7 @@ public class Main implements CommandExecutor {
     public static MongoClient mongoClient;
     public static Gson gson;
 
-    public static DB serverTomeDB;
+    public static MongoDatabase serverTomeDB;
 
     public static final String LEFT_ARROW = "⬅️";
     public static final String RIGHT_ARROW = "➡️";
@@ -60,9 +65,10 @@ public class Main implements CommandExecutor {
         gson = new GsonBuilder()
                 .create();
 
-        MongoClientURI mongoClientURI = env.containsKey("MONGODB_URI") ? new MongoClientURI(env.get("MONGODB_URI")) : null;
-        mongoClient = mongoClientURI != null ? new MongoClient(mongoClientURI) : new MongoClient();
-        serverTomeDB = mongoClient.getDB(mongoClientURI.getDatabase() != null ? mongoClientURI.getDatabase() : "serverTomeDB");
+        ConnectionString mongoUri = env.containsKey("MONGODB_URI") ? new ConnectionString(env.get("MONGODB_URI")) : null;
+
+        mongoClient = mongoUri != null ? MongoClients.create(mongoUri) : MongoClients.create();
+        serverTomeDB = mongoClient.getDatabase(mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
 
         bot = new DiscordApiBuilder().setToken(DISCORD_BOT_TOKEN).login().join();
         cmdHandler = new JavacordHandler(bot);
@@ -105,9 +111,9 @@ public class Main implements CommandExecutor {
     }
 
     public static List<Tome> getServerTomes(final Server server) {
-        DBCollection serverCol = serverTomeDB.getCollection(server.getIdAsString());
+        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
 
-        List<Tome> list = serverCol.find().toArray().stream().map(el -> AvraeClient.getTome((String) el.get("_id"))).collect(Collectors.toList());
+        List<Tome> list = Streams.stream(serverCol.find()).map(el -> AvraeClient.getTome((String) el.get("id"))).collect(Collectors.toList());
 
         return list;
     }
@@ -124,7 +130,7 @@ public class Main implements CommandExecutor {
 
     @Command(aliases = "addtome", description = "Adds a tome to this bots database for this server")
     public void onAddTomeCommand(String[] args, Server server, TextChannel channel) throws Exception {
-        DBCollection serverCol = serverTomeDB.getCollection(server.getIdAsString());
+        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
 
         if (args[0].matches("[^a-z0-9]")) {
             channel.sendMessage(new EmbedBuilder()
@@ -133,12 +139,12 @@ public class Main implements CommandExecutor {
             return;
         }
 
-        BasicDBObject obj = new BasicDBObject("_id", args[0]);
+        Document obj = new Document("id", args[0]);
 
-        if (serverCol.findOne(obj) == null) {
+        if (serverCol.countDocuments(obj) == 0) {
             Tome tome = AvraeClient.getTome(args[0]);
 
-            serverCol.insert(obj);
+            serverCol.insertOne(obj);
             channel.sendMessage(new EmbedBuilder()
                 .setTitle(tome.name)
                 .setDescription("Tome added!")
@@ -157,19 +163,19 @@ public class Main implements CommandExecutor {
 
     @Command(aliases = {"removetome", "rmtome"}, description = "Removes a tome from this bots database for this server")
     public void onRemoveTome(String[] args, Server server, TextChannel channel) throws Exception {
-        DBCollection serverCol = serverTomeDB.getCollection(server.getIdAsString());
+        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
 
-        BasicDBObject obj = new BasicDBObject("_id", args[0]);
+        Document obj = new Document("id", args[0]);
 
         Tome tome = AvraeClient.getTome(args[0]);
 
-        if (serverCol.findOne(obj) == null) {
+        if (serverCol.countDocuments(new BsonDocument()) == 0) {
             channel.sendMessage(new EmbedBuilder()
                     .setTitle(tome.name)
                     .setDescription("Tome is not added!")
             );
         } else {
-            serverCol.remove(obj);
+            serverCol.deleteOne(obj);
             channel.sendMessage(new EmbedBuilder()
                     .setTitle(tome.name)
                     .setDescription("Tome removed!")
