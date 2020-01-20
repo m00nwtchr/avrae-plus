@@ -1,1 +1,1 @@
-bot:
+bot: java -jar build/libs/avrae-plus.jar
