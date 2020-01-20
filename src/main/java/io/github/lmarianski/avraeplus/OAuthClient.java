@@ -1,6 +1,7 @@
 package io.github.lmarianski.avraeplus;
 
 import com.google.gson.annotations.SerializedName;
+import org.apache.commons.io.IOUtils;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
@@ -51,9 +52,7 @@ public class OAuthClient {
                 wr.write(postData);
             }
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-
-            lastToken = Token.fromJSON(br.readLine());
+            lastToken = Token.fromJSON(IOUtils.toString(conn.getInputStream(), StandardCharsets.UTF_8));
             lastTokenTime = System.currentTimeMillis();
 
             Authenticator.setDefault(null);
@@ -62,8 +61,7 @@ public class OAuthClient {
             e.printStackTrace();
             if (conn != null) {
                 try {
-                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
-                    System.err.println(br.readLine());
+                    System.err.println(IOUtils.toString(conn.getErrorStream(), StandardCharsets.UTF_8));
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
