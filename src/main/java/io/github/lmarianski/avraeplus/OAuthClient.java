@@ -3,23 +3,17 @@ package io.github.lmarianski.avraeplus;
 import com.google.gson.annotations.SerializedName;
 import org.apache.commons.io.IOUtils;
 
-import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.Authenticator;
 import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 public class OAuthClient {
 
     public static final String API_ENDPOINT  = "https://discordapp.com/api";
-    public static String CLIENT_ID;
-    public static String CLIENT_SECRET;
+    private static final String CLIENT_ID     = System.getenv("DISCORD_CLIENT_ID");
+    private static final String CLIENT_SECRET = System.getenv("DISCORD_CLIENT_SECRET");
 
     public static Token lastToken;
     public static long lastTokenTime;

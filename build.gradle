@@ -25,7 +25,7 @@ repositories {
 
 dependencies {
     // This dependency is used by the application.
-    implementation 'com.google.guava:guava:28.0-jre'
+    implementation 'com.google.guava:guava:28.1-jre'
     
     implementation 'org.javacord:javacord:3.0.5'
     implementation 'com.github.bastian.sdcf4j:sdcf4j-core:v1.0.10'
@@ -39,8 +39,26 @@ dependencies {
     // https://mvnrepository.com/artifact/commons-io/commons-io
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
 
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.containers/jersey-container-grizzly2-http
+    compile group: 'org.glassfish.jersey.containers', name: 'jersey-container-grizzly2-http', version: '2.30'
+
+    // https://mvnrepository.com/artifact/org.glassfish.jersey.inject/jersey-hk2
+    compile group: 'org.glassfish.jersey.inject', name: 'jersey-hk2', version: '2.30'
+
+    // https://mvnrepository.com/artifact/javax.activation/activation
+    compile group: 'javax.activation', name: 'activation', version: '1.1.1'
+
+    implementation "jakarta.xml.bind:jakarta.xml.bind-api:2.3.2"
+    implementation "org.glassfish.jaxb:jaxb-runtime:2.3.2"
+
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
+
+    implementation('com.google.api-client:google-api-client:1.30.4') {
+        exclude group: "com.google.guava"
+    }
+    compile 'com.google.oauth-client:google-oauth-client-jetty:1.30.4'
+    compile 'com.google.apis:google-api-services-sheets:v4-rev581-1.25.0'
 }
 
 application {
