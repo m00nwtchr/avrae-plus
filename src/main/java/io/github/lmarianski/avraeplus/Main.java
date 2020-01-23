@@ -12,14 +12,10 @@ import de.btobastian.sdcf4j.Command;
 import de.btobastian.sdcf4j.CommandExecutor;
 import de.btobastian.sdcf4j.CommandHandler;
 import de.btobastian.sdcf4j.handler.JavacordHandler;
-import io.github.lmarianski.avraeplus.api.GSheetResource;
 import io.github.lmarianski.avraeplus.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.glassfish.grizzly.http.server.HttpServer;
-import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
-import org.glassfish.jersey.server.ResourceConfig;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.TextChannel;
@@ -31,12 +27,9 @@ import org.javacord.api.entity.server.Server;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.util.event.ListenerManager;
 
-import java.io.IOException;
-import java.net.URI;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -53,9 +46,6 @@ public class Main implements CommandExecutor {
 
     public static final String LEFT_ARROW = "⬅️";
     public static final String RIGHT_ARROW = "➡️";
-
-    private static final URI BASE_URI = URI.create("http://localhost:8080/");
-    public static final String ROOT_PATH = "helloworld";
 
     public static final HashMap<Long, HashMap<String, ArrayList<Tome.Spell>>> SERVER_SPELL_MAP = new HashMap<>();
 
@@ -86,25 +76,23 @@ public class Main implements CommandExecutor {
             serverTomeDB = mongoClient.getDatabase(mongoUri != null && mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
         }
 
-        try {
-            System.out.println(GSheetsClient.getRange("1KnzmBGs2CgUoApHe-okcCHDmJDWkxjSKRYM3nQQAzX0","VersionNum").getValues().get(0).get(0));
-
-            final ResourceConfig resourceConfig = new ResourceConfig(GSheetResource.class);
-            final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI, resourceConfig, false);
-            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    server.shutdownNow();
-                }
-            }));
-            server.start();
-
-            System.out.println(String.format("Application started.\nTry out %s%s\nStop the application using CTRL+C",
-                    BASE_URI, ROOT_PATH));
-            Thread.currentThread().join();
-        } catch (IOException | InterruptedException ex) {
-            LOGGER.log(Level.SEVERE, null, ex);
-        }
+//        try {
+//            System.out.println(GSheetsClient.getRange("1KnzmBGs2CgUoApHe-okcCHDmJDWkxjSKRYM3nQQAzX0","VersionNum").getValues().get(0).get(0));
+//
+//            final ResourceConfig resourceConfig = new ResourceConfig(GSheetResource.class);
+//            final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create(env.getOrDefault("HOST", "http://localhost")+":"+env.getOrDefault("PORT", "8080")), resourceConfig, false);
+//            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    server.shutdownNow();
+//                }
+//            }));
+//            server.start();
+//
+//            Thread.currentThread().join();
+//        } catch (IOException | InterruptedException ex) {
+//            LOGGER.log(Level.SEVERE, null, ex);
+//        }
     }
 
     public static HashMap<String, ArrayList<Tome.Spell>> buildSpellMap(Server server) {

@@ -7,3 +7,5 @@ my.properties
 bin
 .project
 .classpath
+
+tokens
