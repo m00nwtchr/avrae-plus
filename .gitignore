@@ -9,3 +9,5 @@ bin
 .classpath
 
 tokens
+tmp
+.idea
