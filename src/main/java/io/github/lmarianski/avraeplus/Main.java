@@ -14,6 +14,7 @@ import de.btobastian.sdcf4j.CommandHandler;
 import de.btobastian.sdcf4j.handler.JavacordHandler;
 import io.github.lmarianski.avraeplus.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
+import org.apache.commons.text.WordUtils;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.javacord.api.DiscordApi;
@@ -27,11 +28,13 @@ import org.javacord.api.entity.server.Server;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.util.event.ListenerManager;
 
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Main implements CommandExecutor {
 
@@ -142,22 +145,22 @@ public class Main implements CommandExecutor {
     }
 
 
-    @Command(aliases = "addtome", description = "Adds a tome to this bots database for this server")
-    public void onAddTomeCommand(String[] args, Server server, TextChannel channel) throws Exception {
+    @Command(aliases = "addtome", usage = "addtome <tomeid, not url>", description = "Adds a tome to this bots database for this server")
+    public void onAddTomeCommand(String name, String tomeid, Server server, TextChannel channel) {
         MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
 
-        if (AvraeClient.getTome(args[0]) == null) {
+        Tome tome = AvraeClient.getTome(tomeid);
+
+        if (tome == null) {
             channel.sendMessage(new EmbedBuilder()
                     .setDescription("Invalid tome id!")
             );
             return;
         }
 
-        Document obj = new Document("id", args[0]);
+        Document obj = new Document("id", tomeid);
 
         if (serverCol.countDocuments(obj) == 0) {
-            Tome tome = AvraeClient.getTome(args[0]);
-
             serverCol.insertOne(obj);
             channel.sendMessage(new EmbedBuilder()
                 .setTitle(tome.name)
@@ -183,6 +186,13 @@ public class Main implements CommandExecutor {
 
         Tome tome = AvraeClient.getTome(args[0]);
 
+        if (tome == null) {
+            channel.sendMessage(new EmbedBuilder()
+                    .setDescription("Invalid tome id!")
+            );
+            return;
+        }
+
         if (serverCol.countDocuments(new BsonDocument()) == 0) {
             channel.sendMessage(new EmbedBuilder()
                     .setTitle(tome.name)
@@ -200,16 +210,19 @@ public class Main implements CommandExecutor {
         }
     }
 
-    @Command(aliases = "listtomes", description = "Adds a tome to this bots database for this server")
-    public void onListTomes(String[] args, Server server, TextChannel channel) throws Exception {
+    @Command(aliases = {"listtomes", "lstomes"}, description = "Adds a tome to this bots database for this server")
+    public void onListTomes(Server server, TextChannel channel) {
         channel.sendMessage(new EmbedBuilder()
-            .setDescription(getServerTomes(server).stream().map(tome -> tome.name+" (https://avrae.io/homebrew/spells/"+tome.id+")").collect(Collectors.joining("\n")))
-        );
+            .setDescription(
+                    getServerTomes(server).stream()
+                            .map(tome -> tome.name+" (https://avrae.io/homebrew/spells/"+tome.id+")")
+                            .collect(Collectors.joining("\n"))
+            ));
     }
 
-    @Command(aliases = {"spelllist", "spells", "sl"}, description = "Lists spells for that class and level")
-    public void onSpellListCommand(String[] args, Server server, TextChannel channel) throws Exception {
-        String clazz = args[0];
+    @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl ", description = "Lists spells for that class and level")
+    public void onSpellListCommand(String[] args, Server server, TextChannel channel) {
+        String clazz = args[0].toLowerCase();
         int level = Integer.parseInt(args.length == 2 ? args[1] : "-1");
 
         HashMap<String, ArrayList<Tome.Spell>> serverMap = SERVER_SPELL_MAP.get(server.getId());
@@ -218,31 +231,56 @@ public class Main implements CommandExecutor {
             serverMap = buildSpellMap(server);
             SERVER_SPELL_MAP.put(server.getId(), serverMap);
 
-        List<Tome.Spell> spells = serverMap.get(clazz.toLowerCase());
-
-        if (level != -1) {
-            spells = spells.stream().filter(s -> s.level == level).collect(Collectors.toList());
-        }
+        List<Tome.Spell> spells = serverMap.get(clazz);
 
         if (spells != null) {
-            String desc = spells.stream().map(spell -> spell.name).collect(Collectors.joining("\n"));
+            Stream<Tome.Spell> spellStream = spells.stream();
 
+            if (level != -1) {
+                spellStream = spellStream.filter(s -> s.level == level);
+            }
 
+            ArrayList<String> pages;
 
-            AtomicInteger counter = new AtomicInteger();
+            if (level == -1) {
+                ArrayList<List<Tome.Spell>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(spell -> spell.level, Collectors.toList())).values());
+                ArrayList<String> strings = new ArrayList<>();
+                l.forEach((el) -> {
+                    el.sort(Comparator.comparing(a -> a.name));
+                    strings.add("**Level "+l.indexOf(el)+" Spells**");
+                    strings.addAll(el.stream().map(a -> a.name).collect(Collectors.toList()));
+                });
 
-            ArrayList<String> pages = new ArrayList<>(Arrays.stream(desc.split("\n"))
-                    /*.mapToObj(i -> String.valueOf((char)i))*/
-                    .collect(Collectors.groupingBy(ch -> Math.floor(counter.getAndIncrement() / 20D), Collectors.joining("\n")))
-                    .values()
-            );
+                AtomicInteger counter = new AtomicInteger();
+
+                pages = new ArrayList<>();
+
+                strings.stream()
+                        .collect(
+                                Collectors.groupingBy(ch -> Math.floor(counter.getAndIncrement() / 20D), Collectors.joining("\n"))
+                        ).entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEachOrdered(x -> pages.add(x.getValue()));
+            } else {
+                AtomicInteger counter = new AtomicInteger();
+
+                pages = new ArrayList<>(spellStream.map(spell -> spell.name)
+                        .collect(Collectors.groupingBy(ch -> Math.floor(counter.getAndIncrement() / 20D), Collectors.joining("\n")))
+                        .values()
+                );
+            }
+
             AtomicInteger pageIndex = new AtomicInteger();
 
-            Message msg = channel.sendMessage(new EmbedBuilder()
-                .setTitle("Level "+level+" spells for class "+clazz)
-                .setDescription(pages.get(0))
-                .setFooter("Page 1 out of "+pages.size())
-            ).join();
+            String classCapit = WordUtils.capitalizeFully(clazz);
+            String title = level == -1 ? "All spells for class "+classCapit : "Level "+level+" spells for class "+classCapit;
+
+            EmbedBuilder embed = new EmbedBuilder()
+                    .setTitle(title)
+                    .setDescription(pages.get(0))
+                    .setFooter("Page 1 out of "+pages.size());
+
+            Message msg = channel.sendMessage(embed).join();
 
             msg.addReactions(LEFT_ARROW, RIGHT_ARROW).join();
 
@@ -265,7 +303,7 @@ public class Main implements CommandExecutor {
                        pageIndexx = (pageIndexx < 0) ? 0 : ((pageIndexx >= pages.size()) ? (pages.size() - 1) : pageIndexx);
 
                        e.editMessage(new EmbedBuilder()
-                               .setTitle("Level " + level + " spells for class " + clazz)
+                               .setTitle(title)
                                .setDescription(pages.get(pageIndexx))
                                .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
                        );
@@ -277,7 +315,7 @@ public class Main implements CommandExecutor {
 
             listener.removeAfter(5, TimeUnit.MINUTES).addRemoveHandler(() -> {
                 msg.edit(new EmbedBuilder()
-                        .setTitle("Level "+level+" spells for class "+clazz)
+                        .setTitle(title)
                         .setDescription("Expired!")
                 );
                 msg.removeAllReactions();

@@ -58,6 +58,13 @@ dependencies {
     }
     compile 'com.google.oauth-client:google-oauth-client-jetty:1.30.4'
     compile 'com.google.apis:google-api-services-sheets:v4-rev581-1.25.0'
+
+    // https://mvnrepository.com/artifact/commons-cli/commons-cli
+    //compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
+
+    // https://mvnrepository.com/artifact/org.apache.commons/commons-text
+    compile group: 'org.apache.commons', name: 'commons-text', version: '1.8'
+
 }
 
 application {
