@@ -262,6 +262,10 @@ public class Main implements CommandExecutor {
                 spellStream = spellStream.filter(s -> s.ritual);
             }
 
+            if (args.contains("--notwizard")) {
+                spellStream = spellStream.filter(s -> !s.classes.toLowerCase().contains("wizard"));
+            }
+
             ArrayList<String> pages;
 
             if (level == -1) {
