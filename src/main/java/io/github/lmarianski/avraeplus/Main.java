@@ -25,6 +25,7 @@ import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.PermissionType;
 import org.javacord.api.entity.permission.PermissionsBuilder;
 import org.javacord.api.entity.server.Server;
+import org.javacord.api.entity.user.User;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.util.event.ListenerManager;
 
@@ -64,12 +65,12 @@ public class Main implements CommandExecutor {
             bot = new DiscordApiBuilder().setToken(DISCORD_BOT_TOKEN).login().join();
             cmdHandler = new JavacordHandler(bot);
 
-            cmdHandler.setDefaultPrefix("//");
+            cmdHandler.setDefaultPrefix(env.getOrDefault("PREFIX", "!!"));
 
             cmdHandler.registerCommand(new Main());
             cmdHandler.registerCommand(new HelpCommand(cmdHandler));
 
-            bot.updateActivity("//help");
+            bot.updateActivity(cmdHandler.getDefaultPrefix()+"help");
         }
 
         {
@@ -135,6 +136,15 @@ public class Main implements CommandExecutor {
         return list;
     }
 
+    public static boolean isInteger(String s) {
+        try {
+            Integer.parseInt(s);
+        } catch(NumberFormatException | NullPointerException e) {
+            return false;
+        }
+        return true;
+    }
+
     @Command(aliases = "invite", description = "Sends an invite for this bot.")
     public String onInviteCommand() {
         return bot.createBotInvite(new PermissionsBuilder().setAllowed(
@@ -144,8 +154,7 @@ public class Main implements CommandExecutor {
         ).build());
     }
 
-
-    @Command(aliases = "addtome", usage = "addtome <tomeid, not url>", description = "Adds a tome to this bots database for this server")
+    @Command(aliases = "addtome", usage = "addtome <tomeid>", description = "Adds a tome to this bots database for this server")
     public void onAddTomeCommand(String name, String tomeid, Server server, TextChannel channel) {
         MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
 
@@ -178,7 +187,7 @@ public class Main implements CommandExecutor {
         }
     }
 
-    @Command(aliases = {"removetome", "rmtome"}, description = "Removes a tome from this bots database for this server")
+    @Command(aliases = {"removetome", "rmtome"}, usage = "rmtome <tomeid>", description = "Removes a tome from this bots database for this server")
     public void onRemoveTome(String[] args, Server server, TextChannel channel) throws Exception {
         MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
 
@@ -220,10 +229,19 @@ public class Main implements CommandExecutor {
             ));
     }
 
-    @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl ", description = "Lists spells for that class and level")
-    public void onSpellListCommand(String[] args, Server server, TextChannel channel) {
-        String clazz = args[0].toLowerCase();
-        int level = Integer.parseInt(args.length == 2 ? args[1] : "-1");
+    @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl <class> [level] [--ritual]", description = "Lists spells for that class and level")
+    public void onSpellListCommand(String[] argz, Server server, TextChannel channel, User user) {
+        ArrayList<String> args = new ArrayList<>(Arrays.asList(argz));
+
+        String clazz = args.get(0).toLowerCase();
+
+        int tmpLvl = -1;
+        try {
+            tmpLvl = Integer.parseInt(args.get(1));
+        } catch (Exception ignored) {}
+        int level = tmpLvl;
+
+        boolean ritualOnly = args.contains("--ritual");
 
         HashMap<String, ArrayList<Tome.Spell>> serverMap = SERVER_SPELL_MAP.get(server.getId());
 
@@ -238,6 +256,10 @@ public class Main implements CommandExecutor {
 
             if (level != -1) {
                 spellStream = spellStream.filter(s -> s.level == level);
+            }
+
+            if (ritualOnly) {
+                spellStream = spellStream.filter(s -> s.ritual);
             }
 
             ArrayList<String> pages;
@@ -273,19 +295,20 @@ public class Main implements CommandExecutor {
             AtomicInteger pageIndex = new AtomicInteger();
 
             String classCapit = WordUtils.capitalizeFully(clazz);
-            String title = level == -1 ? "All spells for class "+classCapit : "Level "+level+" spells for class "+classCapit;
+            String title = level == -1 ? "All"+(ritualOnly ? " ritual" : "")+" spells for class "+classCapit : "Level "+level+(ritualOnly ? " ritual" : "")+" spells for class "+classCapit;
 
             EmbedBuilder embed = new EmbedBuilder()
                     .setTitle(title)
                     .setDescription(pages.get(0))
-                    .setFooter("Page 1 out of "+pages.size());
+                    .setFooter("Page 1 out of "+pages.size())
+                    .setAuthor(user);
 
             Message msg = channel.sendMessage(embed).join();
 
             msg.addReactions(LEFT_ARROW, RIGHT_ARROW).join();
 
             ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> {
-               if (e.getUser() != bot.getYourself()) {
+               if (e.getUser() == user) {
                    e.removeReaction();
 
                    int pageIndexx = pageIndex.get();
@@ -302,14 +325,19 @@ public class Main implements CommandExecutor {
 
                        pageIndexx = (pageIndexx < 0) ? 0 : ((pageIndexx >= pages.size()) ? (pages.size() - 1) : pageIndexx);
 
-                       e.editMessage(new EmbedBuilder()
-                               .setTitle(title)
-                               .setDescription(pages.get(pageIndexx))
-                               .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
-                       );
+                       if (pageIndex.get() != pageIndexx) {
+                           e.editMessage(new EmbedBuilder()
+                                   .setTitle(title)
+                                   .setDescription(pages.get(pageIndexx))
+                                   .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
+                                   .setAuthor(user)
+                           );
+                       }
 
                        pageIndex.set(pageIndexx);
                    }
+               } else if (e.getUser() != bot.getYourself()) {
+                   e.removeReaction();
                }
             });
 
@@ -317,6 +345,7 @@ public class Main implements CommandExecutor {
                 msg.edit(new EmbedBuilder()
                         .setTitle(title)
                         .setDescription("Expired!")
+                        .setAuthor(user)
                 );
                 msg.removeAllReactions();
             });
