@@ -269,12 +269,12 @@ public class Main implements CommandExecutor {
             ArrayList<String> pages;
 
             if (level == -1) {
-                ArrayList<List<Tome.Spell>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(spell -> spell.level, Collectors.toList())).values());
+                ArrayList<Map.Entry<Integer, List<Tome.Spell>>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(spell -> spell.level, Collectors.toList())).entrySet());
                 ArrayList<String> strings = new ArrayList<>();
                 l.forEach((el) -> {
-                    el.sort(Comparator.comparing(a -> a.name));
-                    strings.add("**Level "+l.indexOf(el)+" Spells**");
-                    strings.addAll(el.stream().map(a -> a.name).collect(Collectors.toList()));
+                    el.getValue().sort(Comparator.comparing(a -> a.name));
+                    strings.add("**Level "+el.getKey()+" Spells**");
+                    strings.addAll(el.getValue().stream().map(a -> a.name).collect(Collectors.toList()));
                 });
 
                 AtomicInteger counter = new AtomicInteger();
