@@ -16,8 +16,12 @@ public class AvraeClient {
 
     public static final String API_ENDPOINT = "https://api.avrae.io";
 
-    public static Tome.Spell[] getSRD() {
-        return Objects.requireNonNull(getTome("srd")).spells;
+    public static final Tome SRD = getSRD();
+
+    public static Tome getSRD() {
+        if (SRD != null)
+            return SRD;
+        return Objects.requireNonNull(getTome("srd"));
     }
 
     public static Tome getTome(String id) {

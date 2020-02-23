@@ -78,6 +78,8 @@ public class Main implements CommandExecutor {
 
             mongoClient = mongoUri != null ? MongoClients.create(mongoUri) : MongoClients.create();
             serverTomeDB = mongoClient.getDatabase(mongoUri != null && mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
+
+            bot.getServers().forEach(Main::getServerTomes);
         }
 
 //        try {
@@ -102,10 +104,16 @@ public class Main implements CommandExecutor {
     public static HashMap<String, ArrayList<Tome.Spell>> buildSpellMap(Server server) {
         HashMap<String, ArrayList<Tome.Spell>> map = new HashMap<>();
 
-        ArrayList<Tome.Spell> allSpells = new ArrayList<>();
 
-        getServerTomes(server).forEach(tome -> allSpells.addAll(Arrays.asList(tome.spells)));
-        allSpells.addAll(Arrays.asList(AvraeClient.getSRD()));
+        long time = System.currentTimeMillis();
+        List<Tome> tomes = getServerTomes(server);
+
+        tomes.add(AvraeClient.getSRD());
+
+        ArrayList<Tome.Spell> allSpells = tomes.stream()
+                .map(tome -> tome.spells)
+                .flatMap(Arrays::stream)
+                .collect(Collectors.toCollection(ArrayList::new));
 
         allSpells.forEach(spell -> {
             for (String clazz : spell.classes.split(",")) {
@@ -122,18 +130,63 @@ public class Main implements CommandExecutor {
             spells.sort(Comparator.comparing(a -> a.name));
         });
 
-        SERVER_SPELL_MAP.remove(server.getId());
-        SERVER_SPELL_MAP.put(server.getId(), map);
+        //SERVER_SPELL_MAP.remove(server.getId());
+        //SERVER_SPELL_MAP.put(server.getId(), map);
 
         return map;
     }
 
-    public static List<Tome> getServerTomes(final Server server) {
+    private static final HashMap<Long, ArrayList<Tome>> SERVER_TOME_MAP = new HashMap<>();
+
+    public static ArrayList<Tome> getServerTomes(final Server server) {
+        return SERVER_TOME_MAP.computeIfAbsent(server.getId(), Main::_getServerTomes);
+    }
+
+    private static ArrayList<Tome> _getServerTomes(final long id) {
+        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+id);
+
+        return Streams.stream(serverCol.find())
+                .map(el -> AvraeClient.getTome((String) el.get("id")))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    public static boolean addTome(Server server, Tome tome) {
+//        if (AvraeClient.getTome(tome) == null) {
+//            throw new IllegalArgumentException("Invalid tome id");
+//        }
+
         MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
+        Document obj = new Document("id", tome);
 
-        List<Tome> list = Streams.stream(serverCol.find()).map(el -> AvraeClient.getTome((String) el.get("id"))).collect(Collectors.toList());
+        if (serverCol.countDocuments(obj) == 0) {
+            serverCol.insertOne(obj);
 
-        return list;
+            ArrayList<Tome> tomes = SERVER_TOME_MAP.computeIfAbsent(server.getId(), Main::_getServerTomes);
+            tomes.add(tome);
+            SERVER_TOME_MAP.put(server.getId(), tomes);
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean removeTome(Server server, Tome tome) {
+//        if (AvraeClient.getTome(tome) == null) {
+//            throw new IllegalArgumentException("Invalid tome id");
+//        }
+
+        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
+        Document obj = new Document("id", tome.id);
+
+        if (serverCol.countDocuments(obj) == 0) {
+            return false;
+        } else {
+            serverCol.deleteOne(obj);
+
+            ArrayList<Tome> tomes = SERVER_TOME_MAP.computeIfAbsent(server.getId(), Main::_getServerTomes);
+            tomes.add(tome);
+            SERVER_TOME_MAP.put(server.getId(), tomes);
+            return true;
+        }
     }
 
     public static boolean isInteger(String s) {
@@ -156,8 +209,6 @@ public class Main implements CommandExecutor {
 
     @Command(aliases = "addtome", usage = "addtome <tomeid>", description = "Adds a tome to this bots database for this server")
     public void onAddTomeCommand(String name, String tomeid, Server server, TextChannel channel) {
-        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
-
         Tome tome = AvraeClient.getTome(tomeid);
 
         if (tome == null) {
@@ -167,10 +218,7 @@ public class Main implements CommandExecutor {
             return;
         }
 
-        Document obj = new Document("id", tomeid);
-
-        if (serverCol.countDocuments(obj) == 0) {
-            serverCol.insertOne(obj);
+        if (addTome(server, tome)) {
             channel.sendMessage(new EmbedBuilder()
                 .setTitle(tome.name)
                 .setDescription("Tome added!")
@@ -178,7 +226,7 @@ public class Main implements CommandExecutor {
                 .setImage(tome.image)
             );
 
-            SERVER_SPELL_MAP.remove(server.getId());
+            //SERVER_SPELL_MAP.remove(server.getId());
             SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
         } else {
             channel.sendMessage(new EmbedBuilder()
@@ -189,10 +237,6 @@ public class Main implements CommandExecutor {
 
     @Command(aliases = {"removetome", "rmtome"}, usage = "rmtome <tomeid>", description = "Removes a tome from this bots database for this server")
     public void onRemoveTome(String[] args, Server server, TextChannel channel) throws Exception {
-        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
-
-        Document obj = new Document("id", args[0]);
-
         Tome tome = AvraeClient.getTome(args[0]);
 
         if (tome == null) {
@@ -202,19 +246,18 @@ public class Main implements CommandExecutor {
             return;
         }
 
-        if (serverCol.countDocuments(new BsonDocument()) == 0) {
+        if (removeTome(server, tome)) {
             channel.sendMessage(new EmbedBuilder()
                     .setTitle(tome.name)
                     .setDescription("Tome is not added!")
             );
         } else {
-            serverCol.deleteOne(obj);
             channel.sendMessage(new EmbedBuilder()
                     .setTitle(tome.name)
                     .setDescription("Tome removed!")
             );
 
-            SERVER_SPELL_MAP.remove(server.getId());
+            //SERVER_SPELL_MAP.remove(server.getId());
             SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
         }
     }
@@ -243,11 +286,7 @@ public class Main implements CommandExecutor {
 
         boolean ritualOnly = args.contains("--ritual");
 
-        HashMap<String, ArrayList<Tome.Spell>> serverMap = SERVER_SPELL_MAP.get(server.getId());
-
-        if (serverMap == null)
-            serverMap = buildSpellMap(server);
-            SERVER_SPELL_MAP.put(server.getId(), serverMap);
+        HashMap<String, ArrayList<Tome.Spell>> serverMap = SERVER_SPELL_MAP.computeIfAbsent(server.getId(), id -> buildSpellMap(bot.getServerById(id).get()));
 
         List<Tome.Spell> spells = serverMap.get(clazz);
 
