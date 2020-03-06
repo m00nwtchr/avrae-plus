@@ -31,7 +31,6 @@ import org.javacord.api.util.event.ListenerManager;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,7 +49,7 @@ public class Main implements CommandExecutor {
     public static final String LEFT_ARROW = "⬅️";
     public static final String RIGHT_ARROW = "➡️";
 
-    public static final HashMap<Long, HashMap<String, ArrayList<Tome.Spell>>> SERVER_SPELL_MAP = new HashMap<>();
+    public static final Map<Long, Map<String, List<Tome.Spell>>> SERVER_SPELL_MAP = new HashMap<>();
 
     public static final Logger LOGGER = Logger.getLogger(Main.class.getName());
 
@@ -69,7 +68,7 @@ public class Main implements CommandExecutor {
             cmdHandler.registerCommand(new Main());
             cmdHandler.registerCommand(new HelpCommand(cmdHandler));
 
-            bot.updateActivity(cmdHandler.getDefaultPrefix()+"help");
+            bot.updateActivity(cmdHandler.getDefaultPrefix() + "help");
         }
 
         {
@@ -106,47 +105,38 @@ public class Main implements CommandExecutor {
         SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
     }
 
-
-    public static HashMap<String, ArrayList<Tome.Spell>> buildSpellMap(Server server) {
-        HashMap<String, ArrayList<Tome.Spell>> map = new HashMap<>();
+    public static Map<String, List<Tome.Spell>> buildSpellMap(Server server) {
+        Map<String, List<Tome.Spell>> map = new HashMap<>();
 
         List<Tome> tomes = getServerTomes(server);
         tomes.add(AvraeClient.getSRD());
 
-        ArrayList<Tome.Spell> allSpells = tomes.stream()
+        tomes.stream()
                 .map(tome -> tome.spells)
                 .flatMap(Arrays::stream)
-                .collect(Collectors.toCollection(ArrayList::new));
+                .peek(spell -> {
+                    spell.classes = spell.classes.trim();
+                    if (spell.classes.endsWith(",")) {
+                        spell.classes = spell.classes.substring(0, spell.classes.length() - 1);
+                    }
+                })
+                .forEach(spell -> {
+                    for (String clazz : spell.classes.split(",")) {
+                        clazz = clazz.trim().toLowerCase(Locale.ROOT);
 
-        allSpells.forEach(spell -> {
-            spell.classes = spell.classes.trim();
-            if (spell.classes.endsWith(",")) {
-                spell.classes = spell.classes.substring(0, spell.classes.length() - 1);
-            }
+                        if (!clazz.equals("artificer revisited") && clazz.contains(" ")) {
+                            String[] c = clazz.split(" ");
 
-            for (String clazz : spell.classes.split(",")) {
-                //if (clazz.endsWith(",")) clazz = clazz.substring(0, clazz.length() - 2);
+                            clazz = c[0];
 
-                clazz = clazz.trim().toLowerCase();
+                            List<Tome.Spell> list = map.computeIfAbsent(c[1], k -> new ArrayList<>());
+                            list.add(spell);
+                        }
 
-                if (!clazz.equals("artificer revisited") && clazz.contains(" ")) {
-                    String[] c = clazz.split(" ");
-
-                    clazz = c[0];
-
-                    ArrayList<Tome.Spell> list = map.computeIfAbsent(c[1], k -> new ArrayList<>());
-                    list.add(spell);
-                }
-
-                ArrayList<Tome.Spell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
-                list.add(spell);
-            }
-        });
-
-        map.forEach((clazz, spells) -> {
-            spells.sort(Comparator.comparing(a -> a.name));
-        });
-
+                        List<Tome.Spell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
+                        list.add(spell);
+                    }
+                });
         return map;
     }
 
@@ -157,7 +147,7 @@ public class Main implements CommandExecutor {
     }
 
     private static ArrayList<Tome> _getServerTomes(final long id) {
-        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+id);
+        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_" + id);
 
         return Streams.stream(serverCol.find())
                 .map(el -> AvraeClient.getTome((String) el.get("id")))
@@ -169,7 +159,7 @@ public class Main implements CommandExecutor {
 //            throw new IllegalArgumentException("Invalid tome id");
 //        }
 
-        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
+        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_" + server.getIdAsString());
         Document obj = new Document("id", tome);
 
         if (serverCol.countDocuments(obj) == 0) {
@@ -188,7 +178,7 @@ public class Main implements CommandExecutor {
 //            throw new IllegalArgumentException("Invalid tome id");
 //        }
 
-        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_"+server.getIdAsString());
+        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_" + server.getIdAsString());
         Document obj = new Document("id", tome.id);
 
         if (serverCol.countDocuments(obj) == 0) {
@@ -206,7 +196,7 @@ public class Main implements CommandExecutor {
     public static boolean isInteger(String s) {
         try {
             Integer.parseInt(s);
-        } catch(NumberFormatException | NullPointerException e) {
+        } catch (NumberFormatException | NullPointerException e) {
             return false;
         }
         return true;
@@ -234,17 +224,17 @@ public class Main implements CommandExecutor {
 
         if (addTome(server, tome)) {
             channel.sendMessage(new EmbedBuilder()
-                .setTitle(tome.name)
-                .setDescription("Tome added!")
-                .setUrl("https://avrae.io/homebrew/spells/"+tome.id)
-                .setImage(tome.image)
+                    .setTitle(tome.name)
+                    .setDescription("Tome added!")
+                    .setUrl("https://avrae.io/homebrew/spells/" + tome.id)
+                    .setImage(tome.image)
             );
 
             //SERVER_SPELL_MAP.remove(server.getId());
             SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
         } else {
             channel.sendMessage(new EmbedBuilder()
-                .setDescription("Tome is already added!")
+                    .setDescription("Tome is already added!")
             );
         }
     }
@@ -279,11 +269,11 @@ public class Main implements CommandExecutor {
     @Command(aliases = {"listtomes", "lstomes"}, description = "Adds a tome to this bots database for this server")
     public void onListTomes(Server server, TextChannel channel) {
         channel.sendMessage(new EmbedBuilder()
-            .setDescription(
-                    getServerTomes(server).stream()
-                            .map(tome -> tome.name+" (https://avrae.io/homebrew/spells/"+tome.id+")")
-                            .collect(Collectors.joining("\n"))
-            ));
+                .setDescription(
+                        getServerTomes(server).stream()
+                                .map(tome -> tome.name + " (https://avrae.io/homebrew/spells/" + tome.id + ")")
+                                .collect(Collectors.joining("\n"))
+                ));
     }
 
 //    public static Predicate<Tome.Spell> spellFilter(boolean level, boolean ritualOnly, List<String> notClasses) {
@@ -298,26 +288,26 @@ public class Main implements CommandExecutor {
 //        }
 //    }
 
-    @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl <class> [level] [--ritual]", description = "Lists spells for that class and level")
+    @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl <class> [level] [--ritual] [--!classname]", description = "Lists spells for that class and level")
     public void onSpellListCommand(String[] argz, Server server, TextChannel channel, User user) {
         ArrayList<String> args = new ArrayList<>(Arrays.asList(argz));
 
-        String clazz = args.get(0).toLowerCase();
+        String clazz = args.get(0).toLowerCase(Locale.ROOT);
 
         int tmpLvl = -1;
         try {
             tmpLvl = Integer.parseInt(args.get(1));
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         int level = tmpLvl;
 
         boolean ritualOnly = args.contains("--ritual");
 
-        HashMap<String, ArrayList<Tome.Spell>> serverMap = SERVER_SPELL_MAP.computeIfAbsent(server.getId(), id -> buildSpellMap(bot.getServerById(id).get()));
-
+        Map<String, List<Tome.Spell>> serverMap = SERVER_SPELL_MAP.computeIfAbsent(server.getId(), id -> buildSpellMap(bot.getServerById(id).get()));
         List<Tome.Spell> spells = serverMap.get(clazz);
 
         if (spells != null) {
-            Stream<Tome.Spell> spellStream = spells.stream();//.filter(spellFilter(level != -1, ritualOnly, );
+            Stream<Tome.Spell> spellStream = spells.stream().sorted(Comparator.<Tome.Spell, Integer>comparing(a -> a.level).thenComparing(a -> a.name));//.filter(spellFilter(level != -1, ritualOnly, );
 
             if (level != -1) {
                 spellStream = spellStream.filter(s -> s.level == level);
@@ -329,24 +319,22 @@ public class Main implements CommandExecutor {
 
             List<String> notClasses = args.stream()
                     .filter(s -> s.startsWith("--!"))
-                    .map(s -> s.substring(2).toLowerCase())
+                    .map(s -> s.substring(3).toLowerCase(Locale.ROOT))
                     .collect(Collectors.toList());
 
             if (notClasses.size() != 0) {
                 spellStream = spellStream
-                        .filter(s -> notClasses.stream().noneMatch(st -> s.classes.contains(st)));
+                        .filter(s -> notClasses.stream().noneMatch(st -> s.classes.toLowerCase(Locale.ROOT).contains(st)));
             }
 
             List<String> pages;
 
-            long count = ???;
-
-            if (level == -1 && count != 0) {
+            if (level == -1) {
                 ArrayList<Map.Entry<Integer, List<Tome.Spell>>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(spell -> spell.level, Collectors.toList())).entrySet());
                 ArrayList<String> strings = new ArrayList<>();
                 l.forEach((el) -> {
                     el.getValue().sort(Comparator.comparing(a -> a.name));
-                    strings.add("**Level "+el.getKey()+" Spells**");
+                    strings.add("**Level " + el.getKey() + " Spells**");
                     strings.addAll(el.getValue().stream().map(a -> a.name).collect(Collectors.toList()));
                 });
 
@@ -358,10 +346,8 @@ public class Main implements CommandExecutor {
                         .collect(
                                 Collectors.groupingBy(ch -> Math.floor(counter.getAndIncrement() / 20D), Collectors.joining("\n"))
                         ).entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .forEachOrdered(x -> pages.add(x.getValue()));
-            } else if (count == 0) {
-                pages = Collections.singletonList("No spells found!");
+                        .sorted(Map.Entry.comparingByKey())
+                        .forEachOrdered(x -> pages.add(x.getValue()));
             } else {
                 AtomicInteger counter = new AtomicInteger();
 
@@ -371,15 +357,35 @@ public class Main implements CommandExecutor {
                 );
             }
 
+            if (pages.size() == 0) {
+                pages.add("No spells found!");
+            }
+
             AtomicInteger pageIndex = new AtomicInteger();
 
-            String classCapit = WordUtils.capitalizeFully(clazz);
-            String title = level == -1 ? "All"+(ritualOnly ? " ritual" : "")+" spells for class "+classCapit : "Level "+level+(ritualOnly ? " ritual" : "")+" spells for class "+classCapit;
+            StringBuilder titleBuilder = new StringBuilder("All");
+            if (level != -1) {
+                titleBuilder.append(" level ").append(level);
+            }
+            if (ritualOnly) {
+                titleBuilder.append(" ritual");
+            }
+            titleBuilder
+                    .append(" spells for class ")
+                    .append(WordUtils.capitalizeFully(clazz));
+
+            if (notClasses.size() > 0) {
+                titleBuilder.append(", Excluding ");
+                titleBuilder.append(WordUtils.capitalizeFully(String.join(", ", notClasses)));
+            }
+
+            String title = titleBuilder.toString();
+
 
             EmbedBuilder embed = new EmbedBuilder()
                     .setTitle(title)
                     .setDescription(pages.get(0))
-                    .setFooter("Page 1 out of "+pages.size())
+                    .setFooter("Page 1 out of " + pages.size())
                     .setAuthor(user);
 
             Message msg = channel.sendMessage(embed).join();
@@ -387,37 +393,37 @@ public class Main implements CommandExecutor {
             msg.addReactions(LEFT_ARROW, RIGHT_ARROW).join();
 
             ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> {
-               if (e.getUser() == user) {
-                   e.removeReaction();
+                if (e.getUser() == user) {
+                    e.removeReaction();
 
-                   int pageIndexx = pageIndex.get();
+                    int pageIndexx = pageIndex.get();
 
-                   if (e.getEmoji().asUnicodeEmoji().isPresent()) {
-                       switch (e.getEmoji().asUnicodeEmoji().get()) {
-                           case (LEFT_ARROW):
-                               pageIndexx--;
-                               break;
-                           case (RIGHT_ARROW):
-                               pageIndexx++;
-                               break;
-                       }
+                    if (e.getEmoji().asUnicodeEmoji().isPresent()) {
+                        switch (e.getEmoji().asUnicodeEmoji().get()) {
+                            case (LEFT_ARROW):
+                                pageIndexx--;
+                                break;
+                            case (RIGHT_ARROW):
+                                pageIndexx++;
+                                break;
+                        }
 
-                       pageIndexx = (pageIndexx < 0) ? 0 : ((pageIndexx >= pages.size()) ? (pages.size() - 1) : pageIndexx);
+                        pageIndexx = (pageIndexx < 0) ? 0 : ((pageIndexx >= pages.size()) ? (pages.size() - 1) : pageIndexx);
 
-                       if (pageIndex.get() != pageIndexx) {
-                           e.editMessage(new EmbedBuilder()
-                                   .setTitle(title)
-                                   .setDescription(pages.get(pageIndexx))
-                                   .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
-                                   .setAuthor(user)
-                           );
-                       }
+                        if (pageIndex.get() != pageIndexx) {
+                            e.editMessage(new EmbedBuilder()
+                                    .setTitle(title)
+                                    .setDescription(pages.get(pageIndexx))
+                                    .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
+                                    .setAuthor(user)
+                            );
+                        }
 
-                       pageIndex.set(pageIndexx);
-                   }
-               } else if (e.getUser() != bot.getYourself()) {
-                   e.removeReaction();
-               }
+                        pageIndex.set(pageIndexx);
+                    }
+                } else if (e.getUser() != bot.getYourself()) {
+                    e.removeReaction();
+                }
             });
 
             listener.removeAfter(5, TimeUnit.MINUTES).addRemoveHandler(() -> {
@@ -429,6 +435,8 @@ public class Main implements CommandExecutor {
                 msg.removeAllReactions();
             });
 
+        } else {
+            channel.sendMessage("Error: Unknown class");
         }
     }
 
