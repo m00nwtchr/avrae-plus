@@ -15,7 +15,6 @@ import de.btobastian.sdcf4j.handler.JavacordHandler;
 import io.github.lmarianski.avraeplus.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
 import org.apache.commons.text.WordUtils;
-import org.bson.BsonDocument;
 import org.bson.Document;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
@@ -29,10 +28,10 @@ import org.javacord.api.entity.user.User;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.util.event.ListenerManager;
 
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -101,13 +100,17 @@ public class Main implements CommandExecutor {
 //        }
     }
 
+    @Command(aliases = {"rebuild"}, showInHelpPage = false, description = "Removes a tome from this bots database for this server")
+    public void rebuildSpellMap(Server server) {
+        SERVER_SPELL_MAP.remove(server.getId());
+        SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+    }
+
+
     public static HashMap<String, ArrayList<Tome.Spell>> buildSpellMap(Server server) {
         HashMap<String, ArrayList<Tome.Spell>> map = new HashMap<>();
 
-
-        long time = System.currentTimeMillis();
         List<Tome> tomes = getServerTomes(server);
-
         tomes.add(AvraeClient.getSRD());
 
         ArrayList<Tome.Spell> allSpells = tomes.stream()
@@ -116,10 +119,24 @@ public class Main implements CommandExecutor {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         allSpells.forEach(spell -> {
+            spell.classes = spell.classes.trim();
+            if (spell.classes.endsWith(",")) {
+                spell.classes = spell.classes.substring(0, spell.classes.length() - 1);
+            }
+
             for (String clazz : spell.classes.split(",")) {
                 //if (clazz.endsWith(",")) clazz = clazz.substring(0, clazz.length() - 2);
 
                 clazz = clazz.trim().toLowerCase();
+
+                if (!clazz.equals("artificer revisited") && clazz.contains(" ")) {
+                    String[] c = clazz.split(" ");
+
+                    clazz = c[0];
+
+                    ArrayList<Tome.Spell> list = map.computeIfAbsent(c[1], k -> new ArrayList<>());
+                    list.add(spell);
+                }
 
                 ArrayList<Tome.Spell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
                 list.add(spell);
@@ -129,9 +146,6 @@ public class Main implements CommandExecutor {
         map.forEach((clazz, spells) -> {
             spells.sort(Comparator.comparing(a -> a.name));
         });
-
-        //SERVER_SPELL_MAP.remove(server.getId());
-        //SERVER_SPELL_MAP.put(server.getId(), map);
 
         return map;
     }
@@ -272,6 +286,18 @@ public class Main implements CommandExecutor {
             ));
     }
 
+//    public static Predicate<Tome.Spell> spellFilter(boolean level, boolean ritualOnly, List<String> notClasses) {
+//        if (ritualOnly) {
+//            return spell -> {
+//                return
+//            }
+//        } else {
+//            return spell -> {
+//
+//            }
+//        }
+//    }
+
     @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl <class> [level] [--ritual]", description = "Lists spells for that class and level")
     public void onSpellListCommand(String[] argz, Server server, TextChannel channel, User user) {
         ArrayList<String> args = new ArrayList<>(Arrays.asList(argz));
@@ -291,7 +317,7 @@ public class Main implements CommandExecutor {
         List<Tome.Spell> spells = serverMap.get(clazz);
 
         if (spells != null) {
-            Stream<Tome.Spell> spellStream = spells.stream();
+            Stream<Tome.Spell> spellStream = spells.stream();//.filter(spellFilter(level != -1, ritualOnly, );
 
             if (level != -1) {
                 spellStream = spellStream.filter(s -> s.level == level);
@@ -301,13 +327,21 @@ public class Main implements CommandExecutor {
                 spellStream = spellStream.filter(s -> s.ritual);
             }
 
-            if (args.contains("--!wizard")) {
-                spellStream = spellStream.filter(s -> !s.classes.toLowerCase().contains("wizard"));
+            List<String> notClasses = args.stream()
+                    .filter(s -> s.startsWith("--!"))
+                    .map(s -> s.substring(2).toLowerCase())
+                    .collect(Collectors.toList());
+
+            if (notClasses.size() != 0) {
+                spellStream = spellStream
+                        .filter(s -> notClasses.stream().noneMatch(st -> s.classes.contains(st)));
             }
 
-            ArrayList<String> pages;
+            List<String> pages;
 
-            if (level == -1) {
+            long count = ???;
+
+            if (level == -1 && count != 0) {
                 ArrayList<Map.Entry<Integer, List<Tome.Spell>>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(spell -> spell.level, Collectors.toList())).entrySet());
                 ArrayList<String> strings = new ArrayList<>();
                 l.forEach((el) -> {
@@ -326,6 +360,8 @@ public class Main implements CommandExecutor {
                         ).entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .forEachOrdered(x -> pages.add(x.getValue()));
+            } else if (count == 0) {
+                pages = Collections.singletonList("No spells found!");
             } else {
                 AtomicInteger counter = new AtomicInteger();
 
