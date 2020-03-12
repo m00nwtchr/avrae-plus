@@ -19,7 +19,11 @@ public enum School {
     TRANSMUTATION;
 
     public static School get(String string) {
-        return valueOf(string.toUpperCase(Locale.ROOT));
+        try {
+            return valueOf(string.toUpperCase(Locale.ROOT));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static School getByLetter(String string) {
