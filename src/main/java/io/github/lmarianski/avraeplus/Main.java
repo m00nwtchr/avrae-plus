@@ -416,9 +416,19 @@ public class Main implements CommandExecutor {
             if (level != -1) {
                 titleBuilder.append(" level ").append(level);
             }
+
+            if (schools.size() != 0) {
+                titleBuilder.append(" ");
+                schools.forEach(el -> {
+                    titleBuilder
+                            .append(el.name().toLowerCase(Locale.ROOT));
+                });
+            }
+
             if (ritualOnly) {
                 titleBuilder.append(" ritual");
             }
+
             titleBuilder
                     .append(" spells for class ")
                     .append(WordUtils.capitalizeFully(clazz));
