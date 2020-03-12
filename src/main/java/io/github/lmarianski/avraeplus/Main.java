@@ -324,7 +324,7 @@ public class Main implements CommandExecutor {
 //        }
 //    }
 
-    @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl <class> [level] [--ritual] [--!classname]", description = "Lists spells for that class and level")
+    @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl <class> [level] [--ritual] [--!classname] [--schoolname]", description = "Lists spells for that class and level")
     public void onSpellListCommand(String[] argz, Server server, TextChannel channel, User user) {
         ArrayList<String> args = new ArrayList<>(Arrays.asList(argz));
 
