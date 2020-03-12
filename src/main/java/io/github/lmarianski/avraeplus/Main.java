@@ -13,6 +13,7 @@ import de.btobastian.sdcf4j.CommandExecutor;
 import de.btobastian.sdcf4j.CommandHandler;
 import de.btobastian.sdcf4j.handler.JavacordHandler;
 import io.github.lmarianski.avraeplus.avrae.AvraeClient;
+import io.github.lmarianski.avraeplus.avrae.homebrew.spells.School;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
 import org.apache.commons.text.WordUtils;
 import org.bson.Document;
@@ -21,8 +22,10 @@ import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
+import org.javacord.api.entity.permission.PermissionState;
 import org.javacord.api.entity.permission.PermissionType;
 import org.javacord.api.entity.permission.PermissionsBuilder;
+import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
@@ -99,13 +102,38 @@ public class Main implements CommandExecutor {
 //        }
     }
 
-    @Command(aliases = {"rebuild"}, showInHelpPage = false, description = "Removes a tome from this bots database for this server")
-    public void rebuildSpellMap(Server server) {
-        SERVER_SPELL_MAP.remove(server.getId());
-        SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+    public static boolean hasRole(String string, User user, Server server) {
+        List<Role> r = server.getRolesByNameIgnoreCase(string);
+
+        return r.size() > 0 && user.getRoles(server).contains(r.get(0));
+    }
+
+    public static boolean isManager(User user, Server server) {
+        return hasRole("Server Brewer", user, server) || server.getPermissions(user).getState(PermissionType.MANAGE_SERVER) == PermissionState.ALLOWED;
+    }
+
+    @Command(aliases = {"rebuild"}, description = "Rebuilds this server's spell database. (Use this to pull changes)")
+    public void rebuildSpellMap(Server server, TextChannel channel, User user) {
+        if (isManager(user, server)) {
+            Message msg = channel.sendMessage("Rebuilding DB...").join();
+            SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+            Map<String, List<Tome.Spell>> m = SERVER_SPELL_MAP.get(server.getId());
+
+            List<Tome> tomes = getServerTomes(server);
+            tomes.add(AvraeClient.getSRD());
+            long spellCount = tomes.stream()
+                    .map(tome -> tome.spells)
+                    .flatMap(Arrays::stream)
+                    .count();
+
+            msg.edit("Done, " + m.size() + " classes found, with a total of " + spellCount + " spells");
+        } else {
+            channel.sendMessage("You don't have permission to do that!");
+        }
     }
 
     public static Map<String, List<Tome.Spell>> buildSpellMap(Server server) {
+        LOGGER.info("Building DB for "+server.getIdAsString());
         Map<String, List<Tome.Spell>> map = new HashMap<>();
 
         List<Tome> tomes = getServerTomes(server);
@@ -142,8 +170,8 @@ public class Main implements CommandExecutor {
 
     private static final HashMap<Long, ArrayList<Tome>> SERVER_TOME_MAP = new HashMap<>();
 
-    public static ArrayList<Tome> getServerTomes(final Server server) {
-        return SERVER_TOME_MAP.computeIfAbsent(server.getId(), Main::_getServerTomes);
+    public static List<Tome> getServerTomes(final Server server) {
+        return new ArrayList<>(SERVER_TOME_MAP.computeIfAbsent(server.getId(), Main::_getServerTomes));
     }
 
     private static ArrayList<Tome> _getServerTomes(final long id) {
@@ -212,57 +240,65 @@ public class Main implements CommandExecutor {
     }
 
     @Command(aliases = "addtome", usage = "addtome <tomeid>", description = "Adds a tome to this bots database for this server")
-    public void onAddTomeCommand(String name, String tomeid, Server server, TextChannel channel) {
-        Tome tome = AvraeClient.getTome(tomeid);
+    public void onAddTomeCommand(String name, String tomeid, User user, Server server, TextChannel channel) {
+        if (isManager(user, server)) {
+            Tome tome = AvraeClient.getTome(tomeid);
 
-        if (tome == null) {
-            channel.sendMessage(new EmbedBuilder()
-                    .setDescription("Invalid tome id!")
-            );
-            return;
-        }
+            if (tome == null) {
+                channel.sendMessage(new EmbedBuilder()
+                        .setDescription("Invalid tome id!")
+                );
+                return;
+            }
 
-        if (addTome(server, tome)) {
-            channel.sendMessage(new EmbedBuilder()
-                    .setTitle(tome.name)
-                    .setDescription("Tome added!")
-                    .setUrl("https://avrae.io/homebrew/spells/" + tome.id)
-                    .setImage(tome.image)
-            );
+            if (addTome(server, tome)) {
+                channel.sendMessage(new EmbedBuilder()
+                        .setTitle(tome.name)
+                        .setDescription("Tome added!")
+                        .setUrl("https://avrae.io/homebrew/spells/" + tome.id)
+                        .setImage(tome.image)
+                );
 
-            //SERVER_SPELL_MAP.remove(server.getId());
-            SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+                //SERVER_SPELL_MAP.remove(server.getId());
+                SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+            } else {
+                channel.sendMessage(new EmbedBuilder()
+                        .setDescription("Tome is already added!")
+                );
+            }
         } else {
-            channel.sendMessage(new EmbedBuilder()
-                    .setDescription("Tome is already added!")
-            );
+            channel.sendMessage("You don't have permission to do that!");
         }
     }
 
     @Command(aliases = {"removetome", "rmtome"}, usage = "rmtome <tomeid>", description = "Removes a tome from this bots database for this server")
-    public void onRemoveTome(String[] args, Server server, TextChannel channel) throws Exception {
-        Tome tome = AvraeClient.getTome(args[0]);
+    public void onRemoveTome(String[] args, User user, Server server, TextChannel channel) throws Exception {
+        if (isManager(user, server)) {
+            Tome tome = AvraeClient.getTome(args[0]);
 
-        if (tome == null) {
-            channel.sendMessage(new EmbedBuilder()
-                    .setDescription("Invalid tome id!")
-            );
-            return;
-        }
+            if (tome == null) {
+                channel.sendMessage(new EmbedBuilder()
+                        .setDescription("Invalid tome id!")
+                );
+                return;
+            }
 
-        if (removeTome(server, tome)) {
-            channel.sendMessage(new EmbedBuilder()
-                    .setTitle(tome.name)
-                    .setDescription("Tome is not added!")
-            );
+            if (removeTome(server, tome)) {
+                channel.sendMessage(new EmbedBuilder()
+                        .setTitle(tome.name)
+                        .setDescription("Tome is not added!")
+                );
+            } else {
+                channel.sendMessage(new EmbedBuilder()
+                        .setTitle(tome.name)
+                        .setDescription("Tome removed!")
+                );
+
+                //SERVER_SPELL_MAP.remove(server.getId());
+                SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+            }
         } else {
-            channel.sendMessage(new EmbedBuilder()
-                    .setTitle(tome.name)
-                    .setDescription("Tome removed!")
-            );
-
-            //SERVER_SPELL_MAP.remove(server.getId());
-            SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+            channel.sendMessage("You don't have permission to do that!");
         }
     }
 
@@ -320,11 +356,24 @@ public class Main implements CommandExecutor {
             List<String> notClasses = args.stream()
                     .filter(s -> s.startsWith("--!"))
                     .map(s -> s.substring(3).toLowerCase(Locale.ROOT))
+                    //.filter(s -> School.get(s) == null)
+                    .collect(Collectors.toList());
+
+            List<School> schools = args.stream()
+                    .filter(s -> s.startsWith("--"))
+                    .map(s -> s.substring(2).toLowerCase(Locale.ROOT))
+                    .map(School::get)
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
             if (notClasses.size() != 0) {
                 spellStream = spellStream
                         .filter(s -> notClasses.stream().noneMatch(st -> s.classes.toLowerCase(Locale.ROOT).contains(st)));
+            }
+
+            if (schools.size() != 0) {
+                spellStream = spellStream
+                        .filter(s -> schools.contains(s.school));
             }
 
             List<String> pages;

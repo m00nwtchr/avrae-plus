@@ -44,8 +44,7 @@ public class Tome {
     public static class Spell {
         public String name;
         public int level;
-        //@JsonAdapter(SchoolJsonAdapter.class)
-        public String school;
+        public School school;
         public String classes;
         public String subclasses;
         public String casttime;
@@ -66,16 +65,4 @@ public class Tome {
         }
     }
 
-    public static class SchoolJsonAdapter extends TypeAdapter<String> {
-
-        @Override
-        public void write(JsonWriter out, String value) throws IOException {
-
-        }
-
-        @Override
-        public String read(JsonReader in) throws IOException {
-            return null;
-        }
-    }
 }
