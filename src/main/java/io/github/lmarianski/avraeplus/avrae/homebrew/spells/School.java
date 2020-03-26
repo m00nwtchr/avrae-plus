@@ -9,14 +9,20 @@ import java.util.Locale;
 @JsonAdapter(School.Serializer.class)
 public enum School {
 
-    ABJURATION,
-    CONJURATION,
-    DIVINATION,
-    ENCHANTMENT,
-    EVOCATION,
-    ILLUSION,
-    NECROMANCY,
-    TRANSMUTATION;
+    ABJURATION("A"),
+    CONJURATION("C"),
+    DIVINATION("D"),
+    ENCHANTMENT("E"),
+    EVOCATION("V"),
+    ILLUSION("I"),
+    NECROMANCY("N"),
+    TRANSMUTATION("T");
+
+    public String id;
+
+    School(String id) {
+        this.id = id;
+    }
 
     public static School get(String string) {
         try {
@@ -26,9 +32,9 @@ public enum School {
         }
     }
 
-    public static School getByLetter(String string) {
+    public static School getByLetter(String letter) {
         for (School s : values())
-            if (s.name().substring(0, 1).equals(string)) return s;
+            if (letter.equalsIgnoreCase(s.id)) return s;
         return null;
     }
 
