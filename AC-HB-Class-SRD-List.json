@@ -1,0 +1,21 @@
+{
+  "spell_lists": {
+    "Witch": [
+      "Chill Touch",
+      "Druidcraft",
+      "Friends",
+      "Guidance",
+      "Light",
+      "Mage Hand",
+      "Mending",
+      "Message",
+      "Minor Illusion",
+      "Prestidigitation",
+      "Resistance",
+      "Shillelagh",
+      "Shocking Grasp",
+      "Thaumaturgy",
+      "Vicious Mockery"
+    ]
+  }
+}

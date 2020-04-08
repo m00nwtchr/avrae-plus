@@ -140,7 +140,8 @@ public class Main implements CommandExecutor {
         List<Tome> tomes = getServerTomes(server);
         tomes.add(AvraeClient.getSRD());
 
-        Map<String, Tome.Spell[]> addSpellLists = tomes.stream()
+        Map<String, String[]> addSpellLists = tomes.stream()
+                .filter(tome -> tome.spellLists != null)
                 .flatMap(tome -> tome.spellLists.entrySet().stream())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
@@ -159,7 +160,6 @@ public class Main implements CommandExecutor {
                     if (addSpellLists.size() > 0) {
                         addSpellLists.forEach((key, value) -> {
                             if (Arrays.stream(value)
-                                    .map(el -> el.name)
                                     .anyMatch(el -> el.equalsIgnoreCase(spell.name))) {
                                 classes.add(key);
                             }

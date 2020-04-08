@@ -28,7 +28,7 @@ public class Tome {
     public String[] serverActive;
     public Spell[] spells;
     @SerializedName("spell_lists")
-    public Map<String, Spell[]> spellLists;
+    public Map<String, String[]> spellLists;
 
     @Override
     public String toString() {
