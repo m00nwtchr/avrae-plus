@@ -37,7 +37,8 @@ public class AvraeClient {
 
     public static Tome getTome(String id) {
         try {
-            URL url = new URL(isURL(id) ? id : API_ENDPOINT+"/homebrew/spells/"+id);
+            boolean flag = isURL(id);
+            URL url = new URL(flag ? id : API_ENDPOINT+"/homebrew/spells/"+id);
 
             ProcessBuilder builder = new ProcessBuilder(
                     "curl", url.toString(),
@@ -52,6 +53,14 @@ public class AvraeClient {
 
             Tome t = Tome.fromJSON(jsonString);
             t.id = id;
+
+            if (t.name == null) {
+                t.name = id;
+                if (flag) {
+                    String[] strs = id.split("/");
+                    t.name=strs[strs.length-1];
+                }
+            }
 
             return t;
         } catch (Exception e) {

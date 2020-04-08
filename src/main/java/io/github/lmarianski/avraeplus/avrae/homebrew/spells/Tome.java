@@ -1,14 +1,14 @@
 package io.github.lmarianski.avraeplus.avrae.homebrew.spells;
 
-import com.google.gson.TypeAdapter;
+import com.google.gson.*;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
+import com.google.gson.reflect.TypeToken;
 import io.github.lmarianski.avraeplus.Main;
 
-import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 public class Tome {
@@ -28,7 +28,8 @@ public class Tome {
     public String[] serverActive;
     public Spell[] spells;
     @SerializedName("spell_lists")
-    public Map<String, String[]> spellLists;
+    @JsonAdapter(SpellListMapSerializer.class)
+    public HashMap<String, ArrayList<String>> spellLists;
 
     @Override
     public String toString() {
@@ -65,6 +66,18 @@ public class Tome {
             public boolean verbal;
             public boolean somatic;
             public String material;
+        }
+    }
+
+    public static class SpellListMapSerializer implements JsonSerializer<HashMap<String, ArrayList<String>>>, JsonDeserializer<HashMap<String, ArrayList<String>>> {
+        @Override
+        public HashMap<String, ArrayList<String>> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            return Main.gson.fromJson(json, new TypeToken<HashMap<String, ArrayList<String>>>(){}.getType());
+        }
+
+        @Override
+        public JsonElement serialize(HashMap<String, ArrayList<String>> src, Type typeOfSrc, JsonSerializationContext context) {
+            return Main.gson.toJsonTree(src);
         }
     }
 

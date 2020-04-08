@@ -39,7 +39,7 @@ public enum School {
     }
 
 
-    public class Serializer implements JsonSerializer<School>, JsonDeserializer<School> {
+    public static class Serializer implements JsonSerializer<School>, JsonDeserializer<School> {
         @Override
         public School deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
             return School.getByLetter(json.getAsString());

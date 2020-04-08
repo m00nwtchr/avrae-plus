@@ -32,6 +32,7 @@ import org.javacord.api.entity.user.User;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.util.event.ListenerManager;
 
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -123,6 +124,7 @@ public class Main implements CommandExecutor {
             List<Tome> tomes = getServerTomes(server);
             tomes.add(AvraeClient.getSRD());
             long spellCount = tomes.stream()
+                    .filter(tome -> tome.spells != null)
                     .map(tome -> tome.spells)
                     .flatMap(Arrays::stream)
                     .count();
@@ -140,12 +142,13 @@ public class Main implements CommandExecutor {
         List<Tome> tomes = getServerTomes(server);
         tomes.add(AvraeClient.getSRD());
 
-        Map<String, String[]> addSpellLists = tomes.stream()
+        Map<String, ArrayList<String>> addSpellLists = tomes.stream()
                 .filter(tome -> tome.spellLists != null)
                 .flatMap(tome -> tome.spellLists.entrySet().stream())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         tomes.stream()
+                .filter(tome -> tome.spells != null)
                 .map(tome -> tome.spells)
                 .flatMap(Arrays::stream)
                 .peek(spell -> {
@@ -155,12 +158,11 @@ public class Main implements CommandExecutor {
                     }
                 })
                 .forEach(spell -> {
-                    List<String> classes = Arrays.asList(spell.classes.split(","));
+                    ArrayList<String> classes = new ArrayList<>(Arrays.asList(spell.classes.split(",")));
 
                     if (addSpellLists.size() > 0) {
                         addSpellLists.forEach((key, value) -> {
-                            if (Arrays.stream(value)
-                                    .anyMatch(el -> el.equalsIgnoreCase(spell.name))) {
+                            if (value.contains(spell.name)) {
                                 classes.add(key);
                             }
                         });
@@ -205,7 +207,7 @@ public class Main implements CommandExecutor {
 //        }
 
         MongoCollection<Document> serverCol = serverTomeDB.getCollection("_" + server.getIdAsString());
-        Document obj = new Document("id", tome);
+        Document obj = new Document("id", tome.id);
 
         if (serverCol.countDocuments(obj) == 0) {
             serverCol.insertOne(obj);
@@ -319,12 +321,22 @@ public class Main implements CommandExecutor {
         }
     }
 
+    public static boolean isURL(String uri) {
+        final URL url;
+        try {
+            url = new URL(uri);
+        } catch (Exception e1) {
+            return false;
+        }
+        return url.getProtocol().matches("http(s)");
+    }
+
     @Command(aliases = {"listtomes", "lstomes"}, description = "Adds a tome to this bots database for this server")
     public void onListTomes(Server server, TextChannel channel) {
         channel.sendMessage(new EmbedBuilder()
                 .setDescription(
                         getServerTomes(server).stream()
-                                .map(tome -> tome.name + " (https://avrae.io/homebrew/spells/" + tome.id + ")")
+                                .map(tome -> tome.name + " ("+ (isURL(tome.id) ? "" : "https://avrae.io/homebrew/spells/") + tome.id + ")")
                                 .collect(Collectors.joining("\n"))
                 ));
     }
