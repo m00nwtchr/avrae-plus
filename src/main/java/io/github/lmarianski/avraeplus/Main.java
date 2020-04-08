@@ -1,5 +1,6 @@
 package io.github.lmarianski.avraeplus;
 
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Streams;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -139,6 +140,10 @@ public class Main implements CommandExecutor {
         List<Tome> tomes = getServerTomes(server);
         tomes.add(AvraeClient.getSRD());
 
+        Map<String, Tome.Spell[]> addSpellLists = tomes.stream()
+                .flatMap(tome -> tome.spellLists.entrySet().stream())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
         tomes.stream()
                 .map(tome -> tome.spells)
                 .flatMap(Arrays::stream)
@@ -149,7 +154,19 @@ public class Main implements CommandExecutor {
                     }
                 })
                 .forEach(spell -> {
-                    for (String clazz : spell.classes.split(",")) {
+                    List<String> classes = Arrays.asList(spell.classes.split(","));
+
+                    if (addSpellLists.size() > 0) {
+                        addSpellLists.forEach((key, value) -> {
+                            if (Arrays.stream(value)
+                                    .map(el -> el.name)
+                                    .anyMatch(el -> el.equalsIgnoreCase(spell.name))) {
+                                classes.add(key);
+                            }
+                        });
+                    }
+
+                    for (String clazz : classes) {
                         clazz = clazz.trim().toLowerCase(Locale.ROOT);
 
                         if (!clazz.equals("artificer revisited") && clazz.contains(" ")) {
@@ -434,8 +451,15 @@ public class Main implements CommandExecutor {
                     .append(WordUtils.capitalizeFully(clazz));
 
             if (notClasses.size() > 0) {
-                titleBuilder.append(", Excluding ");
-                titleBuilder.append(WordUtils.capitalizeFully(String.join(", ", notClasses)));
+                titleBuilder.append(", excluding ")
+                            .append(
+                                    WordUtils.capitalizeFully(String.join(", ", notClasses.size() == 1 ? notClasses : notClasses.subList(0, notClasses.size()-1)))
+                            );
+                if (notClasses.size() > 1)
+                    titleBuilder.append(", and ")
+                                .append(WordUtils.capitalizeFully(notClasses.get(notClasses.size()-1)));
+
+                titleBuilder.append(" spells");
             }
 
             String title = titleBuilder.toString();

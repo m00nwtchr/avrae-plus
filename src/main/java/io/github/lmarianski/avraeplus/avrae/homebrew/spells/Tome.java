@@ -9,6 +9,7 @@ import com.google.gson.stream.JsonWriter;
 import io.github.lmarianski.avraeplus.Main;
 
 import java.io.IOException;
+import java.util.Map;
 
 public class Tome {
 
@@ -26,6 +27,8 @@ public class Tome {
     @SerializedName("server_active")
     public String[] serverActive;
     public Spell[] spells;
+    @SerializedName("spell_lists")
+    public Map<String, Spell[]> spellLists;
 
     @Override
     public String toString() {
