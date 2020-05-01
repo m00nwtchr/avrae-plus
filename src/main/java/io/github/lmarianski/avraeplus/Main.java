@@ -16,6 +16,7 @@ import de.btobastian.sdcf4j.handler.JavacordHandler;
 import io.github.lmarianski.avraeplus.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.School;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
+import io.github.lmarianski.avraeplus.logistics.LogCommands;
 import org.apache.commons.text.WordUtils;
 import org.bson.Document;
 import org.javacord.api.DiscordApi;
@@ -71,6 +72,8 @@ public class Main implements CommandExecutor {
             cmdHandler.setDefaultPrefix(env.getOrDefault("PREFIX", "!!"));
 
             cmdHandler.registerCommand(new Main());
+            cmdHandler.registerCommand(new LogCommands());
+
             cmdHandler.registerCommand(new HelpCommand(cmdHandler));
 
             bot.updateActivity(cmdHandler.getDefaultPrefix() + "help");
@@ -82,7 +85,7 @@ public class Main implements CommandExecutor {
             mongoClient = mongoUri != null ? MongoClients.create(mongoUri) : MongoClients.create();
             serverTomeDB = mongoClient.getDatabase(mongoUri != null && mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
 
-            bot.getServers().forEach(Main::getServerTomes);
+            //bot.getServers().forEach(Main::getServerTomes);
         }
 
 //        try {
