@@ -226,7 +226,7 @@
       "Teleportation Circle"
     ],
     "Vampire": [
-      "Detect Good and Evil",
+      "Detect Evil and Good",
       "False Life",
       "Feather Fall",
       "Fog Cloud",
@@ -243,7 +243,7 @@
       "Fear",
       "Feign Death",
       "Vampiric Touch",
-      "Speak With Dead"
+      "Speak with Dead"
     ]
   }
 }
