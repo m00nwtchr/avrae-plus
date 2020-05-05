@@ -464,8 +464,13 @@ public class Main implements CommandExecutor {
             }
 
             titleBuilder
-                    .append(" spells for class ")
-                    .append(WordUtils.capitalizeFully(clazz));
+                    .append(" spells ");
+
+            if (!clazz.equalsIgnoreCase("all")) {
+                titleBuilder
+                        .append("spells for class ")
+                        .append(WordUtils.capitalizeFully(clazz));
+            }
 
             if (notClasses.size() > 0) {
                 titleBuilder.append(", excluding ")
