@@ -171,6 +171,8 @@ public class Main implements CommandExecutor {
                         });
                     }
 
+                    classes.add("all");
+
                     for (String clazz : classes) {
                         clazz = clazz.trim().toLowerCase(Locale.ROOT);
 
