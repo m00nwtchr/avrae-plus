@@ -1,10 +1,9 @@
 package io.github.lmarianski.avraeplus;
 
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Streams;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -19,6 +18,9 @@ import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
 import io.github.lmarianski.avraeplus.logistics.LogCommands;
 import org.apache.commons.text.WordUtils;
 import org.bson.Document;
+import org.bson.codecs.configuration.CodecRegistries;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.PojoCodecProvider;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.TextChannel;
@@ -49,15 +51,18 @@ public class Main implements CommandExecutor {
     public static CommandHandler cmdHandler;
 
     public static MongoClient mongoClient;
-    public static MongoDatabase serverTomeDB;
+    public static MongoDatabase db;
     public static Gson gson;
 
     public static final String LEFT_ARROW = "⬅️";
     public static final String RIGHT_ARROW = "➡️";
 
-    public static final Map<Long, Map<String, List<Tome.Spell>>> SERVER_SPELL_MAP = new HashMap<>();
+    public static final Map<Long, ServerData> SERVER_DATA_MAP = new HashMap<>();
 
     public static final Logger LOGGER = Logger.getLogger(Main.class.getName());
+    private static MongoCollection<ServerData> serversCollection;
+
+    public static Timer timer = new Timer();
 
     public static void main(String[] args) {
         Map<String, String> env = System.getenv();
@@ -82,10 +87,26 @@ public class Main implements CommandExecutor {
         {
             ConnectionString mongoUri = env.containsKey("MONGODB_URI") ? new ConnectionString(env.get("MONGODB_URI")) : null;
 
-            mongoClient = mongoUri != null ? MongoClients.create(mongoUri) : MongoClients.create();
-            serverTomeDB = mongoClient.getDatabase(mongoUri != null && mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
+            Tome.TomeCodec tomeCodec = new Tome.TomeCodec();
+            ServerData.ServerDataCodec serverDataCodec = new ServerData.ServerDataCodec();
 
-            //bot.getServers().forEach(Main::getServerTomes);
+            CodecRegistry codecRegistry = CodecRegistries.fromRegistries(
+                    MongoClientSettings.getDefaultCodecRegistry(),
+                    CodecRegistries.fromCodecs(tomeCodec),
+                    CodecRegistries.fromProviders(PojoCodecProvider.builder().automatic(true).build())
+            );
+
+            mongoClient = mongoUri != null ? MongoClients.create(mongoUri) : MongoClients.create();
+            db = mongoClient.getDatabase(mongoUri != null && mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
+            serversCollection = db.getCollection("servers", ServerData.class).withCodecRegistry(codecRegistry);
+
+            bot.getServers().forEach(Main::getOrCreateData);
+        }
+
+        {
+
+
+
         }
 
 //        try {
@@ -117,14 +138,35 @@ public class Main implements CommandExecutor {
         return bot.getOwnerId() == user.getId() || hasRole("Server Brewer", user, server) || server.getPermissions(user).getState(PermissionType.MANAGE_SERVER) == PermissionState.ALLOWED;
     }
 
+    public static ServerData getOrCreateData(Server server) {
+        return SERVER_DATA_MAP.computeIfAbsent(server.getId(), id -> {
+
+            Document doc = new Document("serverId", id);
+            ServerData data;
+
+            if (serversCollection.countDocuments(doc) == 0) {
+                data = new ServerData(server);
+
+                serversCollection.insertOne(data);
+            } else {
+                data = Objects.requireNonNull(serversCollection.find(doc).limit(1).first());
+                data.server = server;
+                data.serverId = server.getId();
+            }
+
+            return data;
+        });
+    }
+
     @Command(aliases = {"rebuild"}, description = "Rebuilds this server's spell database. (Use this to pull changes)")
     public void rebuildSpellMap(Server server, TextChannel channel, User user) {
         if (isManager(user, server)) {
-            Message msg = channel.sendMessage("Rebuilding DB...").join();
-            SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
-            Map<String, List<Tome.Spell>> m = SERVER_SPELL_MAP.get(server.getId());
+            ServerData serverData = getOrCreateData(server);
 
-            List<Tome> tomes = getServerTomes(server);
+            Message msg = channel.sendMessage("Rebuilding DB...").join();
+            serverData.spellMap = buildSpellMap(server);
+
+            List<Tome> tomes = new ArrayList<>(serverData.tomes);
             tomes.add(AvraeClient.getSRD());
             long spellCount = tomes.stream()
                     .filter(tome -> tome.spells != null)
@@ -132,7 +174,7 @@ public class Main implements CommandExecutor {
                     .flatMap(Arrays::stream)
                     .count();
 
-            msg.edit("Done, " + m.size() + " classes found, with a total of " + spellCount + " spells");
+            msg.edit("Done, " + serverData.spellMap.size() + " classes found, with a total of " + spellCount + " spells");
         } else {
             channel.sendMessage("You don't have permission to do that!");
         }
@@ -142,7 +184,9 @@ public class Main implements CommandExecutor {
         LOGGER.info("Building DB for "+server.getIdAsString());
         Map<String, List<Tome.Spell>> map = new HashMap<>();
 
-        List<Tome> tomes = getServerTomes(server);
+        ServerData data = getOrCreateData(server);
+
+        List<Tome> tomes = new ArrayList<>(data.tomes);
         tomes.add(AvraeClient.getSRD());
 
         Map<String, ArrayList<String>> addSpellLists = tomes.stream()
@@ -192,66 +236,34 @@ public class Main implements CommandExecutor {
         return map;
     }
 
-    private static final HashMap<Long, ArrayList<Tome>> SERVER_TOME_MAP = new HashMap<>();
+    public static void onDataChange(Server server, ServerData data) {
 
-    public static List<Tome> getServerTomes(final Server server) {
-        return new ArrayList<>(SERVER_TOME_MAP.computeIfAbsent(server.getId(), Main::_getServerTomes));
+        serversCollection.findOneAndReplace(new Document("serverId", server.getId()), data);
+
     }
 
-    private static ArrayList<Tome> _getServerTomes(final long id) {
-        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_" + id);
-
-        return Streams.stream(serverCol.find())
-                .map(el -> AvraeClient.getTome((String) el.get("id")))
-                .collect(Collectors.toCollection(ArrayList::new));
-    }
 
     public static boolean addTome(Server server, Tome tome) {
-//        if (AvraeClient.getTome(tome) == null) {
-//            throw new IllegalArgumentException("Invalid tome id");
-//        }
+        ServerData data = getOrCreateData(server);
 
-        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_" + server.getIdAsString());
-        Document obj = new Document("id", tome.id);
-
-        if (serverCol.countDocuments(obj) == 0) {
-            serverCol.insertOne(obj);
-
-            ArrayList<Tome> tomes = SERVER_TOME_MAP.computeIfAbsent(server.getId(), Main::_getServerTomes);
-            tomes.add(tome);
-            SERVER_TOME_MAP.put(server.getId(), tomes);
+        if (!data.tomes.contains(tome)) {
+            data.tomes.add(tome);
+            onDataChange(server, data);
             return true;
         }
         return false;
     }
 
     public static boolean removeTome(Server server, Tome tome) {
-//        if (AvraeClient.getTome(tome) == null) {
-//            throw new IllegalArgumentException("Invalid tome id");
-//        }
+        ServerData data = getOrCreateData(server);
 
-        MongoCollection<Document> serverCol = serverTomeDB.getCollection("_" + server.getIdAsString());
-        Document obj = new Document("id", tome.id);
-
-        if (serverCol.countDocuments(obj) == 0) {
+        if (!data.tomes.contains(tome)) {
             return false;
         } else {
-            serverCol.deleteOne(obj);
-
-            ArrayList<Tome> tomes = SERVER_TOME_MAP.computeIfAbsent(server.getId(), Main::_getServerTomes);
-            tomes.add(tome);
-            SERVER_TOME_MAP.put(server.getId(), tomes);
+            data.tomes.remove(tome);
+            onDataChange(server, data);
             return true;
         }
-    }
-
-    public static boolean isInteger(String s) {
-        try {
-            Integer.parseInt(s);
-        } catch (NumberFormatException | NullPointerException e) {
-            return false;
-        }
-        return true;
     }
 
     @Command(aliases = "invite", description = "Sends an invite for this bot.")
@@ -267,6 +279,7 @@ public class Main implements CommandExecutor {
     public void onAddTomeCommand(String name, String tomeid, User user, Server server, TextChannel channel) {
         if (isManager(user, server)) {
             Tome tome = AvraeClient.getTome(tomeid);
+            ServerData serverData = getOrCreateData(server);
 
             if (tome == null) {
                 channel.sendMessage(new EmbedBuilder()
@@ -283,8 +296,7 @@ public class Main implements CommandExecutor {
                         .setImage(tome.image)
                 );
 
-                //SERVER_SPELL_MAP.remove(server.getId());
-                SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+                serverData.spellMap = buildSpellMap(server);
             } else {
                 channel.sendMessage(new EmbedBuilder()
                         .setDescription("Tome is already added!")
@@ -299,6 +311,7 @@ public class Main implements CommandExecutor {
     public void onRemoveTome(String[] args, User user, Server server, TextChannel channel) throws Exception {
         if (isManager(user, server)) {
             Tome tome = AvraeClient.getTome(args[0]);
+            ServerData serverData = getOrCreateData(server);
 
             if (tome == null) {
                 channel.sendMessage(new EmbedBuilder()
@@ -318,8 +331,7 @@ public class Main implements CommandExecutor {
                         .setDescription("Tome removed!")
                 );
 
-                //SERVER_SPELL_MAP.remove(server.getId());
-                SERVER_SPELL_MAP.put(server.getId(), buildSpellMap(server));
+                serverData.spellMap = buildSpellMap(server);
             }
         } else {
             channel.sendMessage("You don't have permission to do that!");
@@ -338,9 +350,10 @@ public class Main implements CommandExecutor {
 
     @Command(aliases = {"listtomes", "lstomes"}, description = "Adds a tome to this bots database for this server")
     public void onListTomes(Server server, TextChannel channel) {
+        ServerData data = getOrCreateData(server);
         channel.sendMessage(new EmbedBuilder()
                 .setDescription(
-                        getServerTomes(server).stream()
+                        data.tomes.stream()
                                 .map(tome -> tome.name + " ("+ (isURL(tome.id) ? "" : "https://avrae.io/homebrew/spells/") + tome.id + ")")
                                 .collect(Collectors.joining("\n"))
                 ));
@@ -374,8 +387,9 @@ public class Main implements CommandExecutor {
 
         boolean ritualOnly = args.contains("--ritual");
 
-        Map<String, List<Tome.Spell>> serverMap = SERVER_SPELL_MAP.computeIfAbsent(server.getId(), id -> buildSpellMap(bot.getServerById(id).get()));
-        List<Tome.Spell> spells = serverMap.get(clazz);
+        ServerData serverData = getOrCreateData(server);
+
+        List<Tome.Spell> spells = serverData.spellMap.get(clazz);
 
         if (spells != null) {
             Stream<Tome.Spell> spellStream = spells.stream().sorted(Comparator.<Tome.Spell, Integer>comparing(a -> a.level).thenComparing(a -> a.name));//.filter(spellFilter(level != -1, ritualOnly, );
@@ -546,9 +560,35 @@ public class Main implements CommandExecutor {
         }
     }
 
-    @Command(aliases = {"autoforecast", "af"}, usage = "autoforecast", description = "Lists spells for that class and level")
-    public void onBindAutoForecast(String[] argz, Server server, User user, TextChannel channel) {
+    @Command(aliases = {"forecast", "fc"}, usage = "forecast <period in hours>", description = "Lists spells for that class and level")
+    public void onForecast(String cmd, Server server, User user, TextChannel channel, Message message) {
+
+    }
+
+    @Command(aliases = {"autoforecast", "af"}, usage = "autoforecast <period in hours>", description = "Lists spells for that class and level")
+    public void onBindAutoForecast(String cmd, String period, Server server, User user, TextChannel channel, Message message) {
         if (isManager(user, server)) {
+            TextChannel ch = message.getMentionedChannels().size() == 0 ? channel : message.getMentionedChannels().get(0);
+
+            ServerData data = getOrCreateData(server);
+
+            data.forecastChannel = channel.getId();
+            data.forecastPeriod = Integer.parseInt(period)*60*60*1000;
+
+            Calendar time = Calendar.getInstance(TimeZone.getTimeZone("EST"));
+            time.set(Calendar.HOUR_OF_DAY, 1);
+            time.set(Calendar.MINUTE, 10);
+            time.set(Calendar.SECOND, 0);
+
+            System.out.println(time.getTime());
+
+//            timer.schedule(
+//                    new ForecastTask(data),
+//                    time.getTime(),
+//                    data.forecastPeriod
+//            );
+
+            onDataChange(server, data);
 
         } else {
             channel.sendMessage("Error: You don't have permission to do that");

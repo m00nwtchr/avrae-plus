@@ -5,27 +5,29 @@ import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 import io.github.lmarianski.avraeplus.Main;
+import io.github.lmarianski.avraeplus.avrae.AvraeClient;
+import org.bson.*;
+import org.bson.codecs.*;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 
 public class Tome {
 
     @SerializedName("_id")
     public transient String id;
     public String name;
-    @SerializedName("public")
-    public boolean isPublic;
-    public String desc;
+//    @SerializedName("public")
+//    public boolean isPublic;
+//    public String desc;
     public String image;
-    public String owner;
+//    public String owner;
     //public String[] editors;
-    public TomeSubscriber[] subscribers;
-    public String[] active;
-    @SerializedName("server_active")
-    public String[] serverActive;
+//    public TomeSubscriber[] subscribers;
+//    public String[] active;
+//    @SerializedName("server_active")
+//    public String[] serverActive;
     public Spell[] spells;
     @SerializedName("spell_lists")
     @JsonAdapter(SpellListMapSerializer.class)
@@ -66,6 +68,38 @@ public class Tome {
             public boolean verbal;
             public boolean somatic;
             public String material;
+        }
+    }
+
+    public static class TomeCodec implements CollectibleCodec<Tome> {
+        @Override
+        public Tome generateIdIfAbsentFromDocument(Tome document) {
+            return document;
+        }
+
+        @Override
+        public boolean documentHasId(Tome document) {
+            return document.id != null;
+        }
+
+        @Override
+        public BsonValue getDocumentId(Tome document) {
+            return new BsonString(document.id);
+        }
+
+        @Override
+        public Tome decode(BsonReader reader, DecoderContext decoderContext) {
+            return AvraeClient.getTome(reader.readString());
+        }
+
+        @Override
+        public void encode(BsonWriter writer, Tome value, EncoderContext encoderContext) {
+            writer.writeString(value.id);
+        }
+
+        @Override
+        public Class<Tome> getEncoderClass() {
+            return Tome.class;
         }
     }
 
