@@ -21,6 +21,7 @@ public class LogCommands implements CommandExecutor {
     }
 
     //grabLogs solarblaster#1222 Raldoran
+    //grabLogs Aelwolf#0050 Snirfell
     @Command(aliases = {"grabLogs"}, description = "Shows this page")
     public void grabLogs(String cmd, String username, String character, Server server, Message message, DiscordApi api) {
         message.delete().join();
