@@ -1,11 +1,13 @@
 package io.github.lmarianski.avraeplus;
 
+import io.github.lmarianski.avraeplus.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
 import org.bson.*;
 import org.bson.codecs.*;
 import org.javacord.api.entity.server.Server;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ServerData {
 
@@ -25,6 +27,61 @@ public class ServerData {
     }
 
     public ServerData() {
+    }
+
+    public Map<String, List<Tome.Spell>> buildSpellMap() {
+        List<Tome> tomes = new ArrayList<>(this.tomes);
+        tomes.add(AvraeClient.getSRD());
+
+        Map<String, ArrayList<String>> addSpellLists = tomes.stream()
+                .filter(tome -> tome.spellLists != null)
+                .flatMap(tome -> tome.spellLists.entrySet().stream())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        Map<String, List<Tome.Spell>> map = new HashMap<>();
+
+        tomes.stream()
+                .filter(tome -> tome.spells != null)
+                .map(tome -> tome.spells)
+                .flatMap(Arrays::stream)
+                .peek(spell -> {
+                    spell.classes = spell.classes.trim();
+                    if (spell.classes.endsWith(",")) {
+                        spell.classes = spell.classes.substring(0, spell.classes.length() - 1);
+                    }
+                })
+                .forEach(spell -> {
+                    ArrayList<String> classes = new ArrayList<>(Arrays.asList(spell.classes.split(",")));
+
+                    if (addSpellLists.size() > 0) {
+                        addSpellLists.forEach((key, value) -> {
+                            if (value.contains(spell.name)) {
+                                classes.add(key);
+                            }
+                        });
+                    }
+
+                    classes.add("all");
+
+                    for (String clazz : classes) {
+                        clazz = clazz.trim().toLowerCase(Locale.ROOT);
+
+                        if (!clazz.equals("artificer revisited") && clazz.contains(" ")) {
+                            String[] c = clazz.split(" ");
+
+                            clazz = c[0];
+
+                            List<Tome.Spell> list = map.computeIfAbsent(c[1], k -> new ArrayList<>());
+                            list.add(spell);
+                        }
+
+                        List<Tome.Spell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
+                        list.add(spell);
+                    }
+                });
+
+        this.spellMap = map;
+        return spellMap;
     }
 
     public String toJSON() {

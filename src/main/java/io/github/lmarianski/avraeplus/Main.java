@@ -139,23 +139,27 @@ public class Main implements CommandExecutor {
     }
 
     public static ServerData getOrCreateData(Server server) {
-        return SERVER_DATA_MAP.computeIfAbsent(server.getId(), id -> {
+        synchronized (SERVER_DATA_MAP) {
+            return SERVER_DATA_MAP.computeIfAbsent(server.getId(), id -> {
 
-            Document doc = new Document("serverId", id);
-            ServerData data;
+                Document doc = new Document("serverId", id);
+                ServerData data;
 
-            if (serversCollection.countDocuments(doc) == 0) {
-                data = new ServerData(server);
+                if (serversCollection.countDocuments(doc) == 0) {
+                    data = new ServerData(server);
 
-                serversCollection.insertOne(data);
-            } else {
-                data = Objects.requireNonNull(serversCollection.find(doc).limit(1).first());
-                data.server = server;
-                data.serverId = server.getId();
-            }
+                    serversCollection.insertOne(data);
+                } else {
+                    data = Objects.requireNonNull(serversCollection.find(doc).limit(1).first());
+                    data.server = server;
+                    data.serverId = server.getId();
+                }
 
-            return data;
-        });
+                data.buildSpellMap();
+
+                return data;
+            });
+        }
     }
 
     @Command(aliases = {"rebuild"}, description = "Rebuilds this server's spell database. (Use this to pull changes)")
@@ -164,7 +168,7 @@ public class Main implements CommandExecutor {
             ServerData serverData = getOrCreateData(server);
 
             Message msg = channel.sendMessage("Rebuilding DB...").join();
-            serverData.spellMap = buildSpellMap(server);
+            serverData.buildSpellMap();
 
             List<Tome> tomes = new ArrayList<>(serverData.tomes);
             tomes.add(AvraeClient.getSRD());
@@ -178,62 +182,6 @@ public class Main implements CommandExecutor {
         } else {
             channel.sendMessage("You don't have permission to do that!");
         }
-    }
-
-    public static Map<String, List<Tome.Spell>> buildSpellMap(Server server) {
-        LOGGER.info("Building DB for "+server.getIdAsString());
-        Map<String, List<Tome.Spell>> map = new HashMap<>();
-
-        ServerData data = getOrCreateData(server);
-
-        List<Tome> tomes = new ArrayList<>(data.tomes);
-        tomes.add(AvraeClient.getSRD());
-
-        Map<String, ArrayList<String>> addSpellLists = tomes.stream()
-                .filter(tome -> tome.spellLists != null)
-                .flatMap(tome -> tome.spellLists.entrySet().stream())
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-        tomes.stream()
-                .filter(tome -> tome.spells != null)
-                .map(tome -> tome.spells)
-                .flatMap(Arrays::stream)
-                .peek(spell -> {
-                    spell.classes = spell.classes.trim();
-                    if (spell.classes.endsWith(",")) {
-                        spell.classes = spell.classes.substring(0, spell.classes.length() - 1);
-                    }
-                })
-                .forEach(spell -> {
-                    ArrayList<String> classes = new ArrayList<>(Arrays.asList(spell.classes.split(",")));
-
-                    if (addSpellLists.size() > 0) {
-                        addSpellLists.forEach((key, value) -> {
-                            if (value.contains(spell.name)) {
-                                classes.add(key);
-                            }
-                        });
-                    }
-
-                    classes.add("all");
-
-                    for (String clazz : classes) {
-                        clazz = clazz.trim().toLowerCase(Locale.ROOT);
-
-                        if (!clazz.equals("artificer revisited") && clazz.contains(" ")) {
-                            String[] c = clazz.split(" ");
-
-                            clazz = c[0];
-
-                            List<Tome.Spell> list = map.computeIfAbsent(c[1], k -> new ArrayList<>());
-                            list.add(spell);
-                        }
-
-                        List<Tome.Spell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
-                        list.add(spell);
-                    }
-                });
-        return map;
     }
 
     public static void onDataChange(Server server, ServerData data) {
@@ -296,7 +244,7 @@ public class Main implements CommandExecutor {
                         .setImage(tome.image)
                 );
 
-                serverData.spellMap = buildSpellMap(server);
+                serverData.buildSpellMap();
             } else {
                 channel.sendMessage(new EmbedBuilder()
                         .setDescription("Tome is already added!")
@@ -331,7 +279,7 @@ public class Main implements CommandExecutor {
                         .setDescription("Tome removed!")
                 );
 
-                serverData.spellMap = buildSpellMap(server);
+                serverData.buildSpellMap();
             }
         } else {
             channel.sendMessage("You don't have permission to do that!");
@@ -459,8 +407,6 @@ public class Main implements CommandExecutor {
                 pages.add("No spells found!");
             }
 
-            AtomicInteger pageIndex = new AtomicInteger();
-
             StringBuilder titleBuilder = new StringBuilder("All");
             if (level != -1) {
                 titleBuilder.append(" level ").append(level);
@@ -509,8 +455,9 @@ public class Main implements CommandExecutor {
                     .setAuthor(user);
 
             Message msg = channel.sendMessage(embed).join();
-
             msg.addReactions(LEFT_ARROW, RIGHT_ARROW).join();
+
+            AtomicInteger pageIndex = new AtomicInteger();
 
             ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> {
                 if (e.getUser() == user) {
@@ -560,9 +507,9 @@ public class Main implements CommandExecutor {
         }
     }
 
-    @Command(aliases = {"forecast", "fc"}, usage = "forecast <period in hours>", description = "Lists spells for that class and level")
+    @Command(aliases = {"forecast", "fc"}, usage = "forecast", description = "Lists spells for that class and level")
     public void onForecast(String cmd, Server server, User user, TextChannel channel, Message message) {
-
+        
     }
 
     @Command(aliases = {"autoforecast", "af"}, usage = "autoforecast <period in hours>", description = "Lists spells for that class and level")
@@ -573,20 +520,20 @@ public class Main implements CommandExecutor {
             ServerData data = getOrCreateData(server);
 
             data.forecastChannel = channel.getId();
-            data.forecastPeriod = Integer.parseInt(period)*60*60*1000;
+            data.forecastPeriod = Integer.parseInt(period)*60*60*1000/4;
 
-            Calendar time = Calendar.getInstance(TimeZone.getTimeZone("EST"));
-            time.set(Calendar.HOUR_OF_DAY, 1);
-            time.set(Calendar.MINUTE, 10);
+            Calendar time = Calendar.getInstance();
+            time.set(Calendar.HOUR_OF_DAY, 8);
+            time.set(Calendar.MINUTE, 0);
             time.set(Calendar.SECOND, 0);
 
             System.out.println(time.getTime());
 
-//            timer.schedule(
-//                    new ForecastTask(data),
-//                    time.getTime(),
-//                    data.forecastPeriod
-//            );
+            timer.schedule(
+                    new ForecastTask(data),
+                    time.getTime(),
+                    data.forecastPeriod
+            );
 
             onDataChange(server, data);
 
