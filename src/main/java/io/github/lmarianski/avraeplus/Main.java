@@ -271,15 +271,15 @@ public class Main implements CommandExecutor {
             if (removeTome(server, tome)) {
                 channel.sendMessage(new EmbedBuilder()
                         .setTitle(tome.name)
-                        .setDescription("Tome is not added!")
-                );
-            } else {
-                channel.sendMessage(new EmbedBuilder()
-                        .setTitle(tome.name)
                         .setDescription("Tome removed!")
                 );
 
                 serverData.buildSpellMap();
+            } else {
+                channel.sendMessage(new EmbedBuilder()
+                        .setTitle(tome.name)
+                        .setDescription("Tome is not added!")
+                );
             }
         } else {
             channel.sendMessage("You don't have permission to do that!");
@@ -356,6 +356,12 @@ public class Main implements CommandExecutor {
                     //.filter(s -> School.get(s) == null)
                     .collect(Collectors.toList());
 
+            List<String> yesClasses = args.stream()
+                    .filter(s -> s.startsWith("--"))
+                    .map(s -> s.substring(2).toLowerCase(Locale.ROOT))
+//                    .filter(serverData.spellMap::containsKey)
+                    .collect(Collectors.toList());
+
             List<School> schools = args.stream()
                     .filter(s -> s.startsWith("--"))
                     .map(s -> s.substring(2).toLowerCase(Locale.ROOT))
@@ -366,6 +372,11 @@ public class Main implements CommandExecutor {
             if (notClasses.size() != 0) {
                 spellStream = spellStream
                         .filter(s -> notClasses.stream().noneMatch(st -> s.classes.toLowerCase(Locale.ROOT).contains(st)));
+            }
+
+            if (yesClasses.size() != 0) {
+                spellStream = spellStream
+                        .filter(s -> yesClasses.stream().allMatch(st -> s.classes.toLowerCase(Locale.ROOT).contains(st)));
             }
 
             if (schools.size() != 0) {
@@ -428,9 +439,26 @@ public class Main implements CommandExecutor {
                     .append(" spells ");
 
             if (!clazz.equalsIgnoreCase("all")) {
+                titleBuilder.append("spells for class");
+
+                if (!yesClasses.isEmpty()) {
+                    titleBuilder.append("es");
+                }
+
                 titleBuilder
-                        .append("spells for class ")
+                        .append(" ")
                         .append(WordUtils.capitalizeFully(clazz));
+
+                if (yesClasses.size() == 1) {
+                    titleBuilder.append(" and ").append(WordUtils.capitalizeFully(yesClasses.get(0)));
+                } else {
+                    titleBuilder
+                            .append(", ")
+                            .append(
+                                WordUtils.capitalizeFully(String.join(", ", yesClasses.subList(0, yesClasses.size() - 1)))
+                            ).append(" and ")
+                            .append(WordUtils.capitalizeFully(yesClasses.get(yesClasses.size()-1)));
+                }
             }
 
             if (notClasses.size() > 0) {
