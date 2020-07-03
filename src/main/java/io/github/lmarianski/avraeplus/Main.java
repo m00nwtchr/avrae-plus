@@ -449,15 +449,17 @@ public class Main implements CommandExecutor {
                         .append(" ")
                         .append(WordUtils.capitalizeFully(clazz));
 
-                if (yesClasses.size() == 1) {
-                    titleBuilder.append(" and ").append(WordUtils.capitalizeFully(yesClasses.get(0)));
-                } else if (!yesClasses.isEmpty()) {
-                    titleBuilder
-                            .append(", ")
-                            .append(
-                                WordUtils.capitalizeFully(String.join(", ", yesClasses.subList(0, yesClasses.size() - 1)))
-                            ).append(" and ")
-                            .append(WordUtils.capitalizeFully(yesClasses.get(yesClasses.size()-1)));
+                if (!yesClasses.isEmpty()) {
+                    if (yesClasses.size() == 1) {
+                        titleBuilder.append(" and ").append(WordUtils.capitalizeFully(yesClasses.get(0)));
+                    } else {
+                        titleBuilder
+                                .append(", ")
+                                .append(
+                                        WordUtils.capitalizeFully(String.join(", ", yesClasses.subList(0, yesClasses.size() - 1)))
+                                ).append(" and ")
+                                .append(WordUtils.capitalizeFully(yesClasses.get(yesClasses.size() - 1)));
+                    }
                 }
             }
 
