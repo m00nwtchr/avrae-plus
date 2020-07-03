@@ -451,7 +451,7 @@ public class Main implements CommandExecutor {
 
                 if (yesClasses.size() == 1) {
                     titleBuilder.append(" and ").append(WordUtils.capitalizeFully(yesClasses.get(0)));
-                } else {
+                } else if (!yesClasses.isEmpty()) {
                     titleBuilder
                             .append(", ")
                             .append(
