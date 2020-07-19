@@ -34,6 +34,7 @@ public class ServerData {
         tomes.add(AvraeClient.getSRD());
 
         Map<String, ArrayList<String>> addSpellLists = tomes.stream()
+                .filter(Objects::nonNull)
                 .filter(tome -> tome.spellLists != null)
                 .flatMap(tome -> tome.spellLists.entrySet().stream())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));

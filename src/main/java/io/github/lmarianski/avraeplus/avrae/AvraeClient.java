@@ -41,8 +41,8 @@ public class AvraeClient {
             URL url = new URL(flag ? id : API_ENDPOINT+"/homebrew/spells/"+id);
 
             ProcessBuilder builder = new ProcessBuilder(
-                    "curl", url.toString(),
-                    "--header", "Authorization: "+OAuthClient.getToken().accessToken
+                    "curl", url.toString()
+//                    "--header", "Authorization: "+OAuthClient.getToken().accessToken
             );
 
             Process p = builder.start();
@@ -50,6 +50,10 @@ public class AvraeClient {
             String response = IOUtils.toString(p.getInputStream(), StandardCharsets.UTF_8);
 
             String jsonString = id.equalsIgnoreCase("srd") ? "{\"spells\":"+response+"}" : response;
+
+            if (jsonString.contains("\"error\":")) {
+                throw new Exception(jsonString);
+            }
 
             Tome t = Tome.fromJSON(jsonString);
             t.id = id;
