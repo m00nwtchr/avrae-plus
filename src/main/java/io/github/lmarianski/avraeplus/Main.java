@@ -350,23 +350,23 @@ public class Main implements CommandExecutor {
                 spellStream = spellStream.filter(s -> s.ritual);
             }
 
-            List<String> notClasses = args.stream()
-                    .filter(s -> s.startsWith("--!"))
-                    .map(s -> s.substring(3).toLowerCase(Locale.ROOT))
-                    //.filter(s -> School.get(s) == null)
-                    .collect(Collectors.toList());
-
-            List<String> yesClasses = args.stream()
-                    .filter(s -> s.startsWith("--"))
-                    .map(s -> s.substring(2).toLowerCase(Locale.ROOT))
-//                    .filter(serverData.spellMap::containsKey)
-                    .collect(Collectors.toList());
-
             List<School> schools = args.stream()
                     .filter(s -> s.startsWith("--"))
                     .map(s -> s.substring(2).toLowerCase(Locale.ROOT))
                     .map(School::get)
                     .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            List<String> notClasses = args.stream()
+                    .filter(s -> s.startsWith("--!"))
+                    .map(s -> s.substring(3).toLowerCase(Locale.ROOT))
+                    .filter(s -> serverData.spellMap.containsKey(s))
+                    .collect(Collectors.toList());
+
+            List<String> yesClasses = args.stream()
+                    .filter(s -> s.startsWith("--"))
+                    .map(s -> s.substring(2).toLowerCase(Locale.ROOT))
+                    .filter(s -> serverData.spellMap.containsKey(s))
                     .collect(Collectors.toList());
 
             if (notClasses.size() != 0) {
