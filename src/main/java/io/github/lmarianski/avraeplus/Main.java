@@ -33,7 +33,9 @@ import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
+import org.javacord.api.listener.server.ServerJoinListener;
 import org.javacord.api.util.event.ListenerManager;
+import org.javacord.core.util.handler.guild.GuildBanAddHandler;
 
 import java.net.URL;
 import java.util.*;
@@ -64,6 +66,10 @@ public class Main implements CommandExecutor {
 
     public static Timer timer = new Timer();
 
+    public static void updateActivity() {
+        bot.updateActivity(bot.getServers().size() + " Servers | " + cmdHandler.getDefaultPrefix() + "help");
+    }
+
     public static void main(String[] args) {
         Map<String, String> env = System.getenv();
 
@@ -72,6 +78,10 @@ public class Main implements CommandExecutor {
 
         {
             bot = new DiscordApiBuilder().setToken(DISCORD_BOT_TOKEN).login().join();
+            bot.addListener(ServerJoinListener.class, (e) -> {
+                updateActivity();
+            });
+
             cmdHandler = new JavacordHandler(bot);
 
             cmdHandler.setDefaultPrefix(env.getOrDefault("PREFIX", "!!"));
@@ -81,7 +91,7 @@ public class Main implements CommandExecutor {
 
             cmdHandler.registerCommand(new HelpCommand(cmdHandler));
 
-            bot.updateActivity(cmdHandler.getDefaultPrefix() + "help");
+            updateActivity();
         }
 
         {
@@ -213,6 +223,12 @@ public class Main implements CommandExecutor {
             return true;
         }
     }
+
+
+    // @Command(aliases = "stats", description = "Bot stats")
+    // public void statCommand(TextChannel channel) {
+        // channel.sendMessage("# of servers: "+bot.getServers().size(););
+    // }
 
     @Command(aliases = "invite", description = "Sends an invite for this bot.")
     public String onInviteCommand() {
