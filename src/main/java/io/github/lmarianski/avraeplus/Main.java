@@ -35,7 +35,6 @@ import org.javacord.api.entity.user.User;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.listener.server.ServerJoinListener;
 import org.javacord.api.util.event.ListenerManager;
-import org.javacord.core.util.handler.guild.GuildBanAddHandler;
 
 import java.net.URL;
 import java.util.*;
