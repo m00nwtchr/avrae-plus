@@ -77,9 +77,7 @@ public class Main implements CommandExecutor {
 
         {
             bot = new DiscordApiBuilder().setToken(DISCORD_BOT_TOKEN).login().join();
-            bot.addListener(ServerJoinListener.class, (e) -> {
-                updateActivity();
-            });
+            bot.addListener(ServerJoinListener.class, (e) -> updateActivity());
 
             cmdHandler = new JavacordHandler(bot);
 

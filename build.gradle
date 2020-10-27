@@ -24,7 +24,7 @@ dependencies {
     // This dependency is used by the application.
     implementation 'com.google.guava:guava:28.1-jre'
     
-    implementation 'org.javacord:javacord:3.0.5'
+    implementation 'org.javacord:javacord:3.1.1'
     implementation 'com.github.bastian.sdcf4j:sdcf4j-core:v1.0.10'
     implementation 'com.github.bastian.sdcf4j:sdcf4j-javacord:v1.0.10'
 
