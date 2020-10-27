@@ -503,9 +503,8 @@ public class Main implements CommandExecutor {
             AtomicInteger pageIndex = new AtomicInteger();
 
             ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> {
-                if (e.getUser() == user) {
-                    e.removeReaction();
-
+                e.removeReaction();
+                e.getUser().ifPresent((u) -> {
                     int pageIndexx = pageIndex.get();
 
                     if (e.getEmoji().asUnicodeEmoji().isPresent()) {
@@ -531,9 +530,7 @@ public class Main implements CommandExecutor {
 
                         pageIndex.set(pageIndexx);
                     }
-                } else if (e.getUser() != bot.getYourself()) {
-                    e.removeReaction();
-                }
+                });
             });
 
             listener.removeAfter(5, TimeUnit.MINUTES).addRemoveHandler(() -> {
