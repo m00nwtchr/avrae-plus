@@ -224,7 +224,7 @@ public class Main implements CommandExecutor {
 
     // @Command(aliases = "stats", description = "Bot stats")
     // public void statCommand(TextChannel channel) {
-        // channel.sendMessage("# of servers: "+bot.getServers().size(););
+    // channel.sendMessage("# of servers: "+bot.getServers().size(););
     // }
 
     @Command(aliases = "invite", description = "Sends an invite for this bot.")
@@ -478,12 +478,12 @@ public class Main implements CommandExecutor {
 
             if (notClasses.size() > 0) {
                 titleBuilder.append(", excluding ")
-                            .append(
-                                    WordUtils.capitalizeFully(String.join(", ", notClasses.size() == 1 ? notClasses : notClasses.subList(0, notClasses.size()-1)))
-                            );
+                        .append(
+                                WordUtils.capitalizeFully(String.join(", ", notClasses.size() == 1 ? notClasses : notClasses.subList(0, notClasses.size()-1)))
+                        );
                 if (notClasses.size() > 1)
                     titleBuilder.append(", and ")
-                                .append(WordUtils.capitalizeFully(notClasses.get(notClasses.size()-1)));
+                            .append(WordUtils.capitalizeFully(notClasses.get(notClasses.size()-1)));
 
                 titleBuilder.append(" spells");
             }
@@ -502,9 +502,9 @@ public class Main implements CommandExecutor {
 
             AtomicInteger pageIndex = new AtomicInteger();
 
-            ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> {
-                e.removeReaction();
-                e.getUser().ifPresent((u) -> {
+            ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> e.getUser().ifPresent((u) -> {
+                if (!u.isYourself()) e.removeReaction();
+                if (u.equals(user)) {
                     int pageIndexx = pageIndex.get();
 
                     if (e.getEmoji().asUnicodeEmoji().isPresent()) {
@@ -530,8 +530,8 @@ public class Main implements CommandExecutor {
 
                         pageIndex.set(pageIndexx);
                     }
-                });
-            });
+                }
+            }));
 
             listener.removeAfter(5, TimeUnit.MINUTES).addRemoveHandler(() -> {
                 msg.edit(new EmbedBuilder()
@@ -549,7 +549,7 @@ public class Main implements CommandExecutor {
 
     @Command(aliases = {"forecast", "fc"}, usage = "forecast", description = "Lists spells for that class and level")
     public void onForecast(String cmd, Server server, User user, TextChannel channel, Message message) {
-        
+
     }
 
     @Command(aliases = {"autoforecast", "af"}, usage = "autoforecast <period in hours>", description = "Lists spells for that class and level")
