@@ -23,6 +23,7 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
+import org.javacord.api.entity.channel.ServerChannel;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
@@ -535,39 +536,47 @@ public class Main implements CommandExecutor {
         }
     }
 
-    @Command(aliases = {"forecast", "fc"}, usage = "forecast", description = "Lists spells for that class and level")
-    public void onForecast(String cmd, Server server, User user, TextChannel channel, Message message) {
-
+    @Command(aliases = {"support"}, usage = "support", description = "For when the bot is going crazy")
+    public void onSupport(String[] cmd, User user, TextChannel channel) {
+        User owner = bot.getOwner().join();
+//        System.out.println(String.join(" ", cmd));
+        channel.sendMessage("Hi! "+owner.getMentionTag() + " made this bot, if he's here he'll get to you ASAP, otherwise you can shoot him a DM! (GMT+1 Timezone)").join();
     }
 
-    @Command(aliases = {"autoforecast", "af"}, usage = "autoforecast <period in hours>", description = "Lists spells for that class and level")
-    public void onBindAutoForecast(String cmd, String period, Server server, User user, TextChannel channel, Message message) {
-        if (isManager(user, server)) {
-            TextChannel ch = message.getMentionedChannels().size() == 0 ? channel : message.getMentionedChannels().get(0);
+//
+//    @Command(aliases = {"forecast", "fc"}, usage = "forecast", description = "Lists spells for that class and level")
+//    public void onForecast(String cmd, Server server, User user, TextChannel channel, Message message) {
+//
+//    }
 
-            ServerData data = getOrCreateData(server);
-
-            data.forecastChannel = channel.getId();
-            data.forecastPeriod = Integer.parseInt(period)*60*60*1000/4;
-
-            Calendar time = Calendar.getInstance();
-            time.set(Calendar.HOUR_OF_DAY, 8);
-            time.set(Calendar.MINUTE, 0);
-            time.set(Calendar.SECOND, 0);
-
-            System.out.println(time.getTime());
-
-            timer.schedule(
-                    new ForecastTask(data),
-                    time.getTime(),
-                    data.forecastPeriod
-            );
-
-            onDataChange(server, data);
-
-        } else {
-            channel.sendMessage("Error: You don't have permission to do that");
-        }
-    }
+//    @Command(aliases = {"autoforecast", "af"}, usage = "autoforecast <period in hours>", description = "Lists spells for that class and level")
+//    public void onBindAutoForecast(String cmd, String period, Server server, User user, TextChannel channel, Message message) {
+//        if (isManager(user, server)) {
+//            TextChannel ch = message.getMentionedChannels().size() == 0 ? channel : message.getMentionedChannels().get(0);
+//
+//            ServerData data = getOrCreateData(server);
+//
+//            data.forecastChannel = channel.getId();
+//            data.forecastPeriod = Integer.parseInt(period)*60*60*1000/4;
+//
+//            Calendar time = Calendar.getInstance();
+//            time.set(Calendar.HOUR_OF_DAY, 8);
+//            time.set(Calendar.MINUTE, 0);
+//            time.set(Calendar.SECOND, 0);
+//
+//            System.out.println(time.getTime());
+//
+//            timer.schedule(
+//                    new ForecastTask(data),
+//                    time.getTime(),
+//                    data.forecastPeriod
+//            );
+//
+//            onDataChange(server, data);
+//
+//        } else {
+//            channel.sendMessage("Error: You don't have permission to do that");
+//        }
+//    }
 
 }
