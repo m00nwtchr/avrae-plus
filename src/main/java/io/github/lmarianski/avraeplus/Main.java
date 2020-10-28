@@ -408,23 +408,9 @@ public class Main implements CommandExecutor {
                     strings.addAll(el.getValue().stream().map(a -> a.name).collect(Collectors.toList()));
                 });
 
-                AtomicInteger counter = new AtomicInteger();
-
-                pages = new ArrayList<>();
-
-                strings.stream()
-                        .collect(
-                                Collectors.groupingBy(ch -> Math.floor(counter.getAndIncrement() / 20D), Collectors.joining("\n"))
-                        ).entrySet().stream()
-                        .sorted(Map.Entry.comparingByKey())
-                        .forEachOrdered(x -> pages.add(x.getValue()));
+                pages = Util.paginate(strings.stream(), 20).collect(Collectors.toList());
             } else {
-                AtomicInteger counter = new AtomicInteger();
-
-                pages = new ArrayList<>(spellStream.map(spell -> spell.name)
-                        .collect(Collectors.groupingBy(ch -> Math.floor(counter.getAndIncrement() / 20D), Collectors.joining("\n")))
-                        .values()
-                );
+                pages = Util.paginate(spellStream.map(spell -> spell.name), 20).collect(Collectors.toList());
             }
 
             if (pages.size() == 0) {
@@ -493,54 +479,56 @@ public class Main implements CommandExecutor {
 
             EmbedBuilder embed = new EmbedBuilder()
                     .setTitle(title)
-                    .setDescription(pages.get(0))
-                    .setFooter("Page 1 out of " + pages.size())
+//                    .setDescription(pages.get(0))
+//                    .setFooter("Page 1 out of " + pages.size())
                     .setAuthor(user);
 
-            Message msg = channel.sendMessage(embed).join();
-            msg.addReactions(LEFT_ARROW, RIGHT_ARROW).join();
-
-            AtomicInteger pageIndex = new AtomicInteger();
-
-            ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> e.getUser().ifPresent((u) -> {
-                if (!u.isYourself()) e.removeReaction();
-                if (u.equals(user)) {
-                    int pageIndexx = pageIndex.get();
-
-                    if (e.getEmoji().asUnicodeEmoji().isPresent()) {
-                        switch (e.getEmoji().asUnicodeEmoji().get()) {
-                            case (LEFT_ARROW):
-                                pageIndexx--;
-                                break;
-                            case (RIGHT_ARROW):
-                                pageIndexx++;
-                                break;
-                        }
-
-                        pageIndexx = (pageIndexx < 0) ? 0 : ((pageIndexx >= pages.size()) ? (pages.size() - 1) : pageIndexx);
-
-                        if (pageIndex.get() != pageIndexx) {
-                            e.editMessage(new EmbedBuilder()
-                                    .setTitle(title)
-                                    .setDescription(pages.get(pageIndexx))
-                                    .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
-                                    .setAuthor(user)
-                            );
-                        }
-
-                        pageIndex.set(pageIndexx);
-                    }
-                }
-            }));
-
-            listener.removeAfter(5, TimeUnit.MINUTES).addRemoveHandler(() -> {
-                msg.edit(new EmbedBuilder()
-                        .setTitle(title)
-                        .setDescription("Expired!")
-                        .setAuthor(user)
-                );
-                msg.removeAllReactions();
-            });
+            Message msg = Util.sendPaginatedMessage(channel, user, embed, pages).join();
+//
+//            Message msg = channel.sendMessage(embed).join();
+//            msg.addReactions(LEFT_ARROW, RIGHT_ARROW).join();
+//
+//            AtomicInteger pageIndex = new AtomicInteger();
+//
+//            ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> e.getUser().ifPresent((u) -> {
+//                if (!u.isYourself()) e.removeReaction();
+//                if (u.equals(user)) {
+//                    int pageIndexx = pageIndex.get();
+//
+//                    if (e.getEmoji().asUnicodeEmoji().isPresent()) {
+//                        switch (e.getEmoji().asUnicodeEmoji().get()) {
+//                            case (LEFT_ARROW):
+//                                pageIndexx--;
+//                                break;
+//                            case (RIGHT_ARROW):
+//                                pageIndexx++;
+//                                break;
+//                        }
+//
+//                        pageIndexx = (pageIndexx < 0) ? 0 : ((pageIndexx >= pages.size()) ? (pages.size() - 1) : pageIndexx);
+//
+//                        if (pageIndex.get() != pageIndexx) {
+//                            e.editMessage(new EmbedBuilder()
+//                                    .setTitle(title)
+//                                    .setDescription(pages.get(pageIndexx))
+//                                    .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
+//                                    .setAuthor(user)
+//                            );
+//                        }
+//
+//                        pageIndex.set(pageIndexx);
+//                    }
+//                }
+//            }));
+//
+//            listener.removeAfter(5, TimeUnit.MINUTES).addRemoveHandler(() -> {
+//                msg.edit(new EmbedBuilder()
+//                        .setTitle(title)
+//                        .setDescription("Expired!")
+//                        .setAuthor(user)
+//                );
+//                msg.removeAllReactions();
+//            });
 
         } else {
             channel.sendMessage("Error: Unknown class");
