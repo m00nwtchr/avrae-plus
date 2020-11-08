@@ -67,14 +67,14 @@ public class ServerData {
                     for (String clazz : classes) {
                         clazz = clazz.trim().toLowerCase(Locale.ROOT);
 
-//                        if (!clazz.equals("artificer revisited") && clazz.contains(" ")) {
-//                            String[] c = clazz.split(" ");
-//
-//                            clazz = c[0];
+                        if (clazz.contains(" ")) {
+                            String[] c = clazz.split(" ");
+
+                            clazz = c[0];
 //
 //                            List<Tome.Spell> list = map.computeIfAbsent(c[1], k -> new ArrayList<>());
 //                            list.add(spell);
-//                        }
+                        }
 
                         List<Tome.Spell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
                         list.add(spell);
