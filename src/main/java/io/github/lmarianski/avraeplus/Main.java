@@ -549,34 +549,5 @@ public class Main implements CommandExecutor {
 //
 //    }
 
-//    @Command(aliases = {"autoforecast", "af"}, usage = "autoforecast <period in hours>", description = "Lists spells for that class and level")
-//    public void onBindAutoForecast(String cmd, String period, Server server, User user, TextChannel channel, Message message) {
-//        if (isManager(user, server)) {
-//            TextChannel ch = message.getMentionedChannels().size() == 0 ? channel : message.getMentionedChannels().get(0);
-//
-//            ServerData data = getOrCreateData(server);
-//
-//            data.forecastChannel = channel.getId();
-//            data.forecastPeriod = Integer.parseInt(period)*60*60*1000/4;
-//
-//            Calendar time = Calendar.getInstance();
-//            time.set(Calendar.HOUR_OF_DAY, 8);
-//            time.set(Calendar.MINUTE, 0);
-//            time.set(Calendar.SECOND, 0);
-//
-//            System.out.println(time.getTime());
-//
-//            timer.schedule(
-//                    new ForecastTask(data),
-//                    time.getTime(),
-//                    data.forecastPeriod
-//            );
-//
-//            onDataChange(server, data);
-//
-//        } else {
-//            channel.sendMessage("Error: You don't have permission to do that");
-//        }
-//    }
-
+//   ive 
 }
