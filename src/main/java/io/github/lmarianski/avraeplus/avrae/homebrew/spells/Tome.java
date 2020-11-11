@@ -12,6 +12,7 @@ import org.bson.codecs.*;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 
 public class Tome {
 
@@ -40,6 +41,19 @@ public class Tome {
 
     public static Tome fromJSON(String json) {
         return Main.gson.fromJson(json, Tome.class);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Tome tome = (Tome) o;
+        return id.equals(tome.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 
     public static class TomeSubscriber {

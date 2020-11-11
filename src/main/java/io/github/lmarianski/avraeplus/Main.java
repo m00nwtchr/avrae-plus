@@ -62,7 +62,7 @@ public class Main implements CommandExecutor {
     public static final Map<Long, ServerData> SERVER_DATA_MAP = new HashMap<>();
 
     public static final Logger LOGGER = Logger.getLogger(Main.class.getName());
-    private static MongoCollection<ServerData> serversCollection;
+    public static MongoCollection<ServerData> serversCollection;
 
     public static Timer timer = new Timer();
 
@@ -146,34 +146,39 @@ public class Main implements CommandExecutor {
         return bot.getOwnerId() == user.getId() || hasRole("Server Brewer", user, server) || server.getPermissions(user).getState(PermissionType.MANAGE_SERVER) == PermissionState.ALLOWED;
     }
 
+    private static ServerData _fetch(long id, Server server) {
+            Document doc = new Document("serverId", id);
+            ServerData data;
+
+            if (serversCollection.countDocuments(doc) == 0) {
+                data = new ServerData(server);
+
+                serversCollection.insertOne(data);
+            } else {
+                data = Objects.requireNonNull(serversCollection.find(doc).limit(1).first());
+                data.server = server;
+                data.serverId = id;
+            }
+
+            data.buildSpellMap();
+
+            return data;
+    }
+
     public static ServerData getOrCreateData(Server server) {
+        return getOrCreateData(server, false);
+    }
+
+    public static synchronized ServerData getOrCreateData(Server server, boolean fetch) {
         synchronized (SERVER_DATA_MAP) {
-            return SERVER_DATA_MAP.computeIfAbsent(server.getId(), id -> {
-
-                Document doc = new Document("serverId", id);
-                ServerData data;
-
-                if (serversCollection.countDocuments(doc) == 0) {
-                    data = new ServerData(server);
-
-                    serversCollection.insertOne(data);
-                } else {
-                    data = Objects.requireNonNull(serversCollection.find(doc).limit(1).first());
-                    data.server = server;
-                    data.serverId = server.getId();
-                }
-
-                data.buildSpellMap();
-
-                return data;
-            });
+            return fetch ? SERVER_DATA_MAP.compute(server.getId(), (id,a) -> _fetch(id, server)) : SERVER_DATA_MAP.computeIfAbsent(server.getId(), id -> _fetch(id, server));
         }
     }
 
     @Command(aliases = {"rebuild"}, description = "Rebuilds this server's spell database. (Use this to pull changes)")
     public void rebuildSpellMap(Server server, TextChannel channel, User user) {
         if (isManager(user, server)) {
-            ServerData serverData = getOrCreateData(server);
+            ServerData serverData = getOrCreateData(server, true);
 
             Message msg = channel.sendMessage("Rebuilding DB...").join();
             serverData.buildSpellMap();
@@ -241,7 +246,7 @@ public class Main implements CommandExecutor {
     public void onAddTomeCommand(String name, String tomeid, User user, Server server, TextChannel channel) {
         if (isManager(user, server)) {
             Tome tome = AvraeClient.getTome(tomeid);
-            ServerData serverData = getOrCreateData(server);
+//            ServerData serverData = getOrCreateData(server);
 
             if (tome == null) {
                 channel.sendMessage(new EmbedBuilder()
@@ -258,7 +263,7 @@ public class Main implements CommandExecutor {
                         .setImage(tome.image)
                 );
 
-                serverData.buildSpellMap();
+                getOrCreateData(server, true);
             } else {
                 channel.sendMessage(new EmbedBuilder()
                         .setDescription("Tome is already added!")
@@ -288,7 +293,7 @@ public class Main implements CommandExecutor {
                         .setDescription("Tome removed!")
                 );
 
-                serverData.buildSpellMap();
+                getOrCreateData(server, true);
             } else {
                 channel.sendMessage(new EmbedBuilder()
                         .setTitle(tome.name)
