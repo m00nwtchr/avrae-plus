@@ -109,6 +109,7 @@ public class Main implements CommandExecutor {
             serversCollection = db.getCollection("servers", ServerData.class).withCodecRegistry(codecRegistry);
 
             bot.getServers().forEach(Main::getOrCreateData);
+//            Main.SERVER_DATA_MAP.values().forEach(ServerData::getInvite);
         }
 
         {

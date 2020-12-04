@@ -4,7 +4,9 @@ import io.github.lmarianski.avraeplus.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
 import org.bson.*;
 import org.bson.codecs.*;
+import org.javacord.api.entity.permission.PermissionType;
 import org.javacord.api.entity.server.Server;
+import org.javacord.api.entity.server.invite.Invite;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,6 +29,15 @@ public class ServerData {
     }
 
     public ServerData() {
+    }
+
+    public Optional<? extends Invite> getInvite() {
+        if (server.hasPermission(server.getApi().getYourself(), PermissionType.MANAGE_SERVER)) {
+            return server.getInvites().thenApply(coll -> coll.stream().filter(i -> !i.isRevoked() && !i.isTemporary() && i.getMaxUses() == 0 && i.getMaxAgeInSeconds() == 0).findFirst()).join();
+        } else if (server.hasPermission(server.getApi().getYourself(), PermissionType.CREATE_INSTANT_INVITE)) {
+            return Optional.of(server.getChannels().get(0).createInviteBuilder().setMaxUses(1).setMaxAgeInSeconds(172800).setAuditLogReason("Invite for bot support").create().join());
+        }
+        return Optional.empty();
     }
 
     public Map<String, List<Tome.Spell>> buildSpellMap() {
