@@ -246,6 +246,8 @@ public class Main implements CommandExecutor {
     public void onAddTomeCommand(String name, String tomeid, User user, Server server, TextChannel channel) {
         if (isManager(user, server)) {
             Tome tome = AvraeClient.getTome(tomeid);
+
+
 //            ServerData serverData = getOrCreateData(server);
 
             if (tome == null) {
@@ -388,6 +390,11 @@ public class Main implements CommandExecutor {
                     .filter(s -> serverData.spellMap.containsKey(s))
                     .collect(Collectors.toList());
 
+            List<String> searchTerms = args.stream()
+                    .filter(s -> s.startsWith("-S"))
+                    .map(s -> s.substring(2).toLowerCase(Locale.ROOT))
+                    .collect(Collectors.toList());
+
             if (notClasses.size() != 0) {
                 spellStream = spellStream
                         .filter(s -> notClasses.stream().noneMatch(st -> s.classes.toLowerCase(Locale.ROOT).contains(st)));
@@ -401,6 +408,10 @@ public class Main implements CommandExecutor {
             if (schools.size() != 0) {
                 spellStream = spellStream
                         .filter(s -> schools.contains(s.school));
+            }
+
+            if (searchTerms.size() != 0) {
+                spellStream = spellStream.filter(s->Arrays.stream(s.description.split(" ")).anyMatch(searchTerms::contains));
             }
 
             List<String> pages;

@@ -40,7 +40,12 @@ public class Tome {
     }
 
     public static Tome fromJSON(String json) {
-        return Main.gson.fromJson(json, Tome.class);
+        try {
+            return Main.gson.fromJson(json, Tome.class);
+        } catch (Exception e) {
+            System.err.println(e);
+            return null;
+        }
     }
 
     @Override
