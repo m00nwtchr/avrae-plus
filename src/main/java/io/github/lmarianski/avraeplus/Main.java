@@ -491,6 +491,10 @@ public class Main implements CommandExecutor {
                 titleBuilder.append(" spells");
             }
 
+            if (searchTerms.size() > 0) {
+                titleBuilder.append(", searching for \"").append(String.join("\" OR \"", searchTerms)).append("\"");
+            }
+
             String title = titleBuilder.toString();
 
 
