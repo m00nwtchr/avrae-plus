@@ -16,7 +16,6 @@ import de.btobastian.sdcf4j.handler.JavacordHandler;
 import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpell;
 import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpellCollection;
 import io.github.lmarianski.avraeplus.data.sources.SourceManager;
-import io.github.lmarianski.avraeplus.data.sources.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.data.SpellSchool;
 import io.github.lmarianski.avraeplus.data.sources.avrae.spells.Tome;
 import io.github.lmarianski.avraeplus.logistics.LogCommands;
@@ -69,6 +68,8 @@ public class Main implements CommandExecutor {
 
     public static final Type MAP_STRING_STRING_TYPE = new TypeToken<Map<String, String>>() {}.getType();
 
+    public static GlobalData globalData;
+
     public static void updateActivity() {
         bot.updateActivity(bot.getServers().size() + " Servers | " + cmdHandler.getDefaultPrefix() + "help");
     }
@@ -111,6 +112,10 @@ public class Main implements CommandExecutor {
             mongoClient = mongoUri != null ? MongoClients.create(mongoUri) : MongoClients.create();
             db = mongoClient.getDatabase(mongoUri != null && mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
             serversCollection = db.getCollection("servers", ServerData.class).withCodecRegistry(codecRegistry);
+
+//            synchronized (globalData) {
+                globalData = new GlobalData();
+//            }
 
             bot.getServers().forEach(Main::getOrCreateData);
 //            Main.SERVER_DATA_MAP.values().forEach(ServerData::getInvite);
@@ -344,6 +349,8 @@ public class Main implements CommandExecutor {
     public void onSpellListCommand(String[] argz, Server server, TextChannel channel, User user) {
         ArrayList<String> args = new ArrayList<>(Arrays.asList(argz));
 
+        globalData.incrementHits();
+        
         String clazz = args.get(0).toLowerCase(Locale.ROOT);
 
         int tmpLvl = -1;
