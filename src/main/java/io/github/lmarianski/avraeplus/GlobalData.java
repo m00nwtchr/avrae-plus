@@ -3,10 +3,7 @@ package io.github.lmarianski.avraeplus;
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.TimerTask;
+import java.util.*;
 
 public class GlobalData {
 
@@ -17,7 +14,7 @@ public class GlobalData {
 
     public static long DAY_MS = 86400000;
 
-    private Calendar calendar = new Calendar.Builder().build();
+    private Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 
     public GlobalData() {
         globalData = Main.db.getCollection("globalData");
