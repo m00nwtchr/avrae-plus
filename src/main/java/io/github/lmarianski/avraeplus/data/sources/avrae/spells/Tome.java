@@ -1,20 +1,20 @@
-package io.github.lmarianski.avraeplus.avrae.homebrew.spells;
+package io.github.lmarianski.avraeplus.data.sources.avrae.spells;
 
 import com.google.gson.*;
-import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 import io.github.lmarianski.avraeplus.Main;
-import io.github.lmarianski.avraeplus.avrae.AvraeClient;
+import io.github.lmarianski.avraeplus.data.SpellSchool;
+import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpell;
+import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpellCollection;
+import io.github.lmarianski.avraeplus.data.sources.avrae.AvraeClient;
 import org.bson.*;
 import org.bson.codecs.*;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Objects;
+import java.util.*;
 
-public class Tome {
+public class Tome implements ISpellCollection {
 
     @SerializedName("_id")
     public transient String id;
@@ -29,10 +29,10 @@ public class Tome {
 //    public String[] active;
 //    @SerializedName("server_active")
 //    public String[] serverActive;
-    public Spell[] spells;
+    public AvraeSpell[] spells;
     @SerializedName("spell_lists")
-    @JsonAdapter(SpellListMapSerializer.class)
-    public HashMap<String, ArrayList<String>> spellLists;
+//    @JsonAdapter(SpellListMapSerializer.class)
+//    public HashMap<String, ArrayList<String>> spellLists;
 
     @Override
     public String toString() {
@@ -50,15 +50,37 @@ public class Tome {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Tome tome = (Tome) o;
-        return id.equals(tome.id);
+        return o instanceof ISpellCollection && ((ISpellCollection) o).getId().equals(getId());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hashCode(id);
+    }
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public String getName() {
+        return this.name;
+    }
+
+    @Override
+    public String getImage() {
+        return image;
+    }
+
+    @Override
+    public AvraeSpell[] getSpells() {
+        return this.spells;
+    }
+
+    @Override
+    public Map<String, List<String>> getSpellLists() {
+        return null;
     }
 
     public static class TomeSubscriber {
@@ -66,10 +88,10 @@ public class Tome {
         public String id;
     }
 
-    public static class Spell {
+    public static class AvraeSpell implements ISpell {
         public String name;
         public int level;
-        public School school;
+        public SpellSchool school;
         public String classes;
         public String subclasses;
         public String casttime;
@@ -82,6 +104,45 @@ public class Tome {
         @SerializedName("higherlevels")
         public String higherLevels;
         public boolean concentration;
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public int getLevel() {
+            return level;
+        }
+
+        @Override
+        public SpellSchool getSchool() {
+            return school;
+        }
+
+        @Override
+        public String[] getClasses() {
+            return getClassString().split(", ");
+        }
+
+        @Override
+        public String getClassString() {
+            String classes = this.classes;
+            if (classes.endsWith(",")) {
+                classes = classes.substring(0, classes.length() - 1);
+            }
+            return classes.trim();
+        }
+
+        @Override
+        public String getDescription() {
+            return description;
+        }
+
+        @Override
+        public boolean isRitual() {
+            return ritual;
+        }
 
         public static class SpellComponents {
             public boolean verbal;

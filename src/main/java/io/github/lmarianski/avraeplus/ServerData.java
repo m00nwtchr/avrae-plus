@@ -1,12 +1,12 @@
 package io.github.lmarianski.avraeplus;
 
-import io.github.lmarianski.avraeplus.avrae.AvraeClient;
-import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
+import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpell;
+import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpellCollection;
+import io.github.lmarianski.avraeplus.data.sources.avrae.AvraeClient;
+import io.github.lmarianski.avraeplus.data.sources.fiveetools.FiveEToolsClient;
 import org.bson.*;
 import org.bson.codecs.*;
-import org.javacord.api.entity.permission.PermissionType;
 import org.javacord.api.entity.server.Server;
-import org.javacord.api.entity.server.invite.Invite;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -17,8 +17,8 @@ public class ServerData {
 
     public long serverId;
 
-    public transient Map<String, List<Tome.Spell>> spellMap = new HashMap<>();
-    public List<Tome> tomes = new ArrayList<>();
+    public transient Map<String, List<ISpell>> spellMap = new HashMap<>();
+    public HashSet<ISpellCollection> tomes = new HashSet<>();
 
     public long forecastPeriod;
     public long forecastChannel;
@@ -31,43 +31,45 @@ public class ServerData {
     public ServerData() {
     }
 
-    public Optional<? extends Invite> getInvite() {
-        if (server.hasPermission(server.getApi().getYourself(), PermissionType.MANAGE_SERVER)) {
-            return server.getInvites().thenApply(coll -> coll.stream().filter(i -> !i.isRevoked() && !i.isTemporary() && i.getMaxUses() == 0 && i.getMaxAgeInSeconds() == 0).findFirst()).join();
-        } else if (server.hasPermission(server.getApi().getYourself(), PermissionType.CREATE_INSTANT_INVITE)) {
-            return Optional.of(server.getChannels().get(0).createInviteBuilder().setMaxUses(1).setMaxAgeInSeconds(172800).setAuditLogReason("Invite for bot support").create().join());
-        }
-        return Optional.empty();
-    }
+//    @BsonIgnore
+//    public Optional<? extends Invite> getInvite() {
+//        if (server.hasPermission(server.getApi().getYourself(), PermissionType.MANAGE_SERVER)) {
+//            return server.getInvites().thenApply(coll -> coll.stream().filter(i -> !i.isRevoked() && !i.isTemporary() && i.getMaxUses() == 0 && i.getMaxAgeInSeconds() == 0).findFirst()).join();
+//        } else if (server.hasPermission(server.getApi().getYourself(), PermissionType.CREATE_INSTANT_INVITE)) {
+//            return Optional.of(server.getChannels().get(0).createInviteBuilder().setMaxUses(1).setMaxAgeInSeconds(172800).setAuditLogReason("Invite for bot support").create().join());
+//        }
+//        return Optional.empty();
+//    }
 
-    public Map<String, List<Tome.Spell>> buildSpellMap() {
-        List<Tome> tomes = new ArrayList<>(this.tomes);
-        tomes.add(AvraeClient.getSRD());
+    public Map<String, List<ISpell>> buildSpellMap() {
+        List<ISpellCollection> tomes = new ArrayList<>(this.tomes);
+//        tomes.add(AvraeClient.getSRD());
+        tomes.addAll(FiveEToolsClient.getIndex()
+                .keySet()
+                .stream()
+                    .filter(el -> !el.startsWith("UA"))
+                    .map(FiveEToolsClient::getSource)
+                    .collect(Collectors.toList())
+        );
 
-        Map<String, ArrayList<String>> addSpellLists = tomes.stream()
+        Map<String, List<String>> addSpellLists = tomes.stream()
                 .filter(Objects::nonNull)
-                .filter(tome -> tome.spellLists != null)
-                .flatMap(tome -> tome.spellLists.entrySet().stream())
+                .filter(tome -> tome.getSpellLists() != null)
+                .flatMap(tome -> tome.getSpellLists().entrySet().stream())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        Map<String, List<Tome.Spell>> map = new HashMap<>();
+        Map<String, List<ISpell>> map = new HashMap<>();
 
         tomes.stream()
-                .filter(tome -> tome.spells != null)
-                .map(tome -> tome.spells)
+                .filter(tome -> tome.getSpells() != null)
+                .map(ISpellCollection::getSpells)
                 .flatMap(Arrays::stream)
-                .peek(spell -> {
-                    spell.classes = spell.classes.trim();
-                    if (spell.classes.endsWith(",")) {
-                        spell.classes = spell.classes.substring(0, spell.classes.length() - 1);
-                    }
-                })
                 .forEach(spell -> {
-                    ArrayList<String> classes = new ArrayList<>(Arrays.asList(spell.classes.split(",")));
+                    List<String> classes = new ArrayList<>(Arrays.asList(spell.getClasses()));
 
                     if (addSpellLists.size() > 0) {
                         addSpellLists.forEach((key, value) -> {
-                            if (value.contains(spell.name)) {
+                            if (value.contains(spell.getName())) {
                                 classes.add(key);
                             }
                         });
@@ -87,7 +89,7 @@ public class ServerData {
 //                            list.add(spell);
                         }
 
-                        List<Tome.Spell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
+                        List<ISpell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
                         list.add(spell);
                     }
                 });
@@ -104,24 +106,24 @@ public class ServerData {
         return Main.gson.fromJson(json, ServerData.class);
     }
 
-    public Document toMongo() {
-        Document doc = new Document();
-
-        doc.append("serverId", serverId);
-        doc.append("spellMap", spellMap);
-        doc.append("tomes", tomes);
-
-        return doc;
-    }
-
-    public static ServerData fromMongo(Document doc, Server server) {
-        ServerData data = new ServerData(server);
-
-        data.spellMap = (Map<String, List<Tome.Spell>>) doc.get("spellMap");
-        data.tomes    = (List<Tome>) doc.get("tomes");
-
-        return data;
-    }
+//    public Document toMongo() {
+//        Document doc = new Document();
+//
+//        doc.append("serverId", serverId);
+////        doc.append("spellMap", spellMap);
+//        doc.append("tomes", tomes.stream().map(ISpellCollection::toMongo).toArray(Document[]::));
+//
+//        return doc;
+//    }
+//
+//    public static ServerData fromMongo(Document doc, Server server) {
+//        ServerData data = new ServerData(server);
+//
+////        data.spellMap = (Map<String, List<ISpell>>) doc.get("spellMap");
+////        data.tomes    = (List<ISpellCollection<? extends ISpell>>) doc.get("tomes");
+//
+//        return data;
+//    }
 
     public static class ServerDataCodec implements CollectibleCodec<ServerData> {
         private final Codec<Document> documentCodec = new DocumentCodec();
@@ -147,8 +149,8 @@ public class ServerData {
             ServerData data = new ServerData();
 
             data.serverId = doc.getLong("serverId");
-            data.spellMap = (Map<String, List<Tome.Spell>>) doc.get("spellMap");
-            data.tomes = doc.getList("tomes", Tome.class);
+//            data.spellMap = (Map<String, List<ISpell>>) doc.get("spellMap");
+            data.tomes = new HashSet<>(doc.getList("tomes", ISpellCollection.class));
 
             return data;
         }

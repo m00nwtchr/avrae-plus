@@ -1,4 +1,4 @@
-package io.github.lmarianski.avraeplus.avrae.homebrew.spells;
+package io.github.lmarianski.avraeplus.data;
 
 import com.google.gson.*;
 import com.google.gson.annotations.JsonAdapter;
@@ -6,8 +6,8 @@ import com.google.gson.annotations.JsonAdapter;
 import java.lang.reflect.Type;
 import java.util.Locale;
 
-@JsonAdapter(School.Serializer.class)
-public enum School {
+@JsonAdapter(SpellSchool.Serializer.class)
+public enum SpellSchool {
 
     ABJURATION("A"),
     CONJURATION("C"),
@@ -20,11 +20,11 @@ public enum School {
 
     public String id;
 
-    School(String id) {
+    SpellSchool(String id) {
         this.id = id;
     }
 
-    public static School get(String string) {
+    public static SpellSchool get(String string) {
         try {
             return valueOf(string.toUpperCase(Locale.ROOT));
         } catch (Exception e) {
@@ -32,21 +32,21 @@ public enum School {
         }
     }
 
-    public static School getByLetter(String letter) {
-        for (School s : values())
+    public static SpellSchool getByLetter(String letter) {
+        for (SpellSchool s : values())
             if (letter.equalsIgnoreCase(s.id)) return s;
         return null;
     }
 
 
-    public static class Serializer implements JsonSerializer<School>, JsonDeserializer<School> {
+    public static class Serializer implements JsonSerializer<SpellSchool>, JsonDeserializer<SpellSchool> {
         @Override
-        public School deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            return School.getByLetter(json.getAsString());
+        public SpellSchool deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            return SpellSchool.getByLetter(json.getAsString());
         }
 
         @Override
-        public JsonElement serialize(School src, Type typeOfSrc, JsonSerializationContext context) {
+        public JsonElement serialize(SpellSchool src, Type typeOfSrc, JsonSerializationContext context) {
             return context.serialize(src.name().substring(0, 1));
         }
     }

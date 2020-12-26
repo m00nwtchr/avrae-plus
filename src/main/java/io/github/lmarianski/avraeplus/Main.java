@@ -2,6 +2,7 @@ package io.github.lmarianski.avraeplus;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -12,9 +13,12 @@ import de.btobastian.sdcf4j.Command;
 import de.btobastian.sdcf4j.CommandExecutor;
 import de.btobastian.sdcf4j.CommandHandler;
 import de.btobastian.sdcf4j.handler.JavacordHandler;
-import io.github.lmarianski.avraeplus.avrae.AvraeClient;
-import io.github.lmarianski.avraeplus.avrae.homebrew.spells.School;
-import io.github.lmarianski.avraeplus.avrae.homebrew.spells.Tome;
+import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpell;
+import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpellCollection;
+import io.github.lmarianski.avraeplus.data.sources.SourceManager;
+import io.github.lmarianski.avraeplus.data.sources.avrae.AvraeClient;
+import io.github.lmarianski.avraeplus.data.SpellSchool;
+import io.github.lmarianski.avraeplus.data.sources.avrae.spells.Tome;
 import io.github.lmarianski.avraeplus.logistics.LogCommands;
 import org.apache.commons.text.WordUtils;
 import org.bson.Document;
@@ -23,7 +27,6 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
-import org.javacord.api.entity.channel.ServerChannel;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
@@ -33,14 +36,12 @@ import org.javacord.api.entity.permission.PermissionsBuilder;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
-import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.listener.server.ServerJoinListener;
-import org.javacord.api.util.event.ListenerManager;
 
+import java.io.IOException;
+import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -65,6 +66,8 @@ public class Main implements CommandExecutor {
     public static MongoCollection<ServerData> serversCollection;
 
     public static Timer timer = new Timer();
+
+    public static final Type MAP_STRING_STRING_TYPE = new TypeToken<Map<String, String>>() {}.getType();
 
     public static void updateActivity() {
         bot.updateActivity(bot.getServers().size() + " Servers | " + cmdHandler.getDefaultPrefix() + "help");
@@ -97,10 +100,11 @@ public class Main implements CommandExecutor {
 
             Tome.TomeCodec tomeCodec = new Tome.TomeCodec();
             ServerData.ServerDataCodec serverDataCodec = new ServerData.ServerDataCodec();
+            ISpellCollection.Codec spellCollectionCodec = new ISpellCollection.Codec();
 
             CodecRegistry codecRegistry = CodecRegistries.fromRegistries(
                     MongoClientSettings.getDefaultCodecRegistry(),
-                    CodecRegistries.fromCodecs(tomeCodec),
+                    CodecRegistries.fromCodecs(tomeCodec, spellCollectionCodec),
                     CodecRegistries.fromProviders(PojoCodecProvider.builder().automatic(true).build())
             );
 
@@ -184,13 +188,7 @@ public class Main implements CommandExecutor {
             Message msg = channel.sendMessage("Rebuilding DB...").join();
             serverData.buildSpellMap();
 
-            List<Tome> tomes = new ArrayList<>(serverData.tomes);
-            tomes.add(AvraeClient.getSRD());
-            long spellCount = tomes.stream()
-                    .filter(tome -> tome.spells != null)
-                    .map(tome -> tome.spells)
-                    .flatMap(Arrays::stream)
-                    .count();
+            long spellCount = serverData.spellMap.get("all").size();
 
             msg.edit("Done, " + serverData.spellMap.size() + " classes found, with a total of " + spellCount + " spells");
         } else {
@@ -205,7 +203,7 @@ public class Main implements CommandExecutor {
     }
 
 
-    public static boolean addTome(Server server, Tome tome) {
+    public static boolean addTome(Server server, ISpellCollection tome) {
         ServerData data = getOrCreateData(server);
 
         if (!data.tomes.contains(tome)) {
@@ -216,7 +214,7 @@ public class Main implements CommandExecutor {
         return false;
     }
 
-    public static boolean removeTome(Server server, Tome tome) {
+    public static boolean removeTome(Server server, ISpellCollection tome) {
         ServerData data = getOrCreateData(server);
 
         if (!data.tomes.contains(tome)) {
@@ -244,9 +242,9 @@ public class Main implements CommandExecutor {
     }
 
     @Command(aliases = "addtome", usage = "addtome <tomeid>", description = "Adds a tome to this bots database for this server")
-    public void onAddTomeCommand(String name, String tomeid, User user, Server server, TextChannel channel) {
+    public void onAddTomeCommand(String name, String tomeid, User user, Server server, TextChannel channel) throws IOException {
         if (isManager(user, server)) {
-            Tome tome = AvraeClient.getTome(tomeid);
+            ISpellCollection tome = SourceManager.getTome(tomeid);
 
 
 //            ServerData serverData = getOrCreateData(server);
@@ -260,10 +258,10 @@ public class Main implements CommandExecutor {
 
             if (addTome(server, tome)) {
                 channel.sendMessage(new EmbedBuilder()
-                        .setTitle(tome.name)
+                        .setTitle(tome.getName())
                         .setDescription("Tome added!")
-                        .setUrl("https://avrae.io/homebrew/spells/" + tome.id)
-                        .setImage(tome.image)
+                        .setUrl("https://avrae.io/homebrew/spells/" + tome.getId())
+                        .setImage(tome.getImage())
                 );
 
                 getOrCreateData(server, true);
@@ -280,7 +278,7 @@ public class Main implements CommandExecutor {
     @Command(aliases = {"removetome", "rmtome"}, usage = "rmtome <tomeid>", description = "Removes a tome from this bots database for this server")
     public void onRemoveTome(String[] args, User user, Server server, TextChannel channel) throws Exception {
         if (isManager(user, server)) {
-            Tome tome = AvraeClient.getTome(args[0]);
+            ISpellCollection tome = SourceManager.getTome(args[0]);
             ServerData serverData = getOrCreateData(server);
 
             if (tome == null) {
@@ -292,14 +290,14 @@ public class Main implements CommandExecutor {
 
             if (removeTome(server, tome)) {
                 channel.sendMessage(new EmbedBuilder()
-                        .setTitle(tome.name)
+                        .setTitle(tome.getName())
                         .setDescription("Tome removed!")
                 );
 
                 getOrCreateData(server, true);
             } else {
                 channel.sendMessage(new EmbedBuilder()
-                        .setTitle(tome.name)
+                        .setTitle(tome.getName())
                         .setDescription("Tome is not added!")
                 );
             }
@@ -324,7 +322,7 @@ public class Main implements CommandExecutor {
         channel.sendMessage(new EmbedBuilder()
                 .setDescription(
                         data.tomes.stream()
-                                .map(tome -> tome.name + " ("+ (isURL(tome.id) ? "" : "https://avrae.io/homebrew/spells/") + tome.id + ")")
+                                .map(tome -> tome.getName() + " ("+ (isURL(tome.getId()) ? "" : "https://avrae.io/homebrew/spells/") + tome.getId() + ")")
                                 .collect(Collectors.joining("\n"))
                 ));
     }
@@ -359,23 +357,23 @@ public class Main implements CommandExecutor {
 
         ServerData serverData = getOrCreateData(server);
 
-        List<Tome.Spell> spells = serverData.spellMap.get(clazz);
+        List<ISpell> spells = serverData.spellMap.get(clazz);
 
         if (spells != null) {
-            Stream<Tome.Spell> spellStream = spells.stream().sorted(Comparator.<Tome.Spell, Integer>comparing(a -> a.level).thenComparing(a -> a.name));//.filter(spellFilter(level != -1, ritualOnly, );
+            Stream<ISpell> spellStream = spells.stream().sorted(Comparator.comparing(ISpell::getLevel).thenComparing(ISpell::getName));//.filter(spellFilter(level != -1, ritualOnly, );
 
             if (level != -1) {
-                spellStream = spellStream.filter(s -> s.level == level);
+                spellStream = spellStream.filter(s -> s.getLevel() == level);
             }
 
             if (ritualOnly) {
-                spellStream = spellStream.filter(s -> s.ritual);
+                spellStream = spellStream.filter(ISpell::isRitual);
             }
 
-            List<School> schools = args.stream()
+            List<SpellSchool> schools = args.stream()
                     .filter(s -> s.startsWith("--"))
                     .map(s -> s.substring(2).toLowerCase(Locale.ROOT))
-                    .map(School::get)
+                    .map(SpellSchool::get)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
@@ -398,37 +396,37 @@ public class Main implements CommandExecutor {
 
             if (notClasses.size() != 0) {
                 spellStream = spellStream
-                        .filter(s -> notClasses.stream().noneMatch(st -> s.classes.toLowerCase(Locale.ROOT).contains(st)));
+                        .filter(s -> notClasses.stream().noneMatch(st -> s.getClassString().toLowerCase(Locale.ROOT).contains(st)));
             }
 
             if (yesClasses.size() != 0) {
                 spellStream = spellStream
-                        .filter(s -> yesClasses.stream().allMatch(st -> s.classes.toLowerCase(Locale.ROOT).contains(st)));
+                        .filter(s -> yesClasses.stream().allMatch(st -> s.getClassString().toLowerCase(Locale.ROOT).contains(st)));
             }
 
             if (schools.size() != 0) {
                 spellStream = spellStream
-                        .filter(s -> schools.contains(s.school));
+                        .filter(s -> schools.contains(s.getSchool()));
             }
 
             if (searchTerms.size() != 0) {
-                spellStream = spellStream.filter(s->Arrays.stream(s.description.split(" ")).anyMatch(searchTerms::contains));
+                spellStream = spellStream.filter(s->Arrays.stream(s.getDescription().split(" ")).anyMatch(searchTerms::contains));
             }
 
             List<String> pages;
 
             if (level == -1) {
-                ArrayList<Map.Entry<Integer, List<Tome.Spell>>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(spell -> spell.level, Collectors.toList())).entrySet());
+                ArrayList<Map.Entry<Integer, List<ISpell>>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(ISpell::getLevel, Collectors.toList())).entrySet());
                 ArrayList<String> strings = new ArrayList<>();
                 l.forEach((el) -> {
-                    el.getValue().sort(Comparator.comparing(a -> a.name));
+                    el.getValue().sort(Comparator.comparing(ISpell::getName));
                     strings.add("**Level " + el.getKey() + " Spells**");
-                    strings.addAll(el.getValue().stream().map(a -> a.name).collect(Collectors.toList()));
+                    strings.addAll(el.getValue().stream().map(ISpell::getName).collect(Collectors.toList()));
                 });
 
                 pages = Util.paginate(strings.stream(), 20).collect(Collectors.toList());
             } else {
-                pages = Util.paginate(spellStream.map(spell -> spell.name), 20).collect(Collectors.toList());
+                pages = Util.paginate(spellStream.map(ISpell::getName), 20).collect(Collectors.toList());
             }
 
             if (pages.size() == 0) {

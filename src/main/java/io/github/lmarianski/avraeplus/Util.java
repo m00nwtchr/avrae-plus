@@ -1,5 +1,6 @@
 package io.github.lmarianski.avraeplus;
 
+import org.apache.commons.io.IOUtils;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
@@ -7,6 +8,11 @@ import org.javacord.api.entity.user.User;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import org.javacord.api.util.event.ListenerManager;
 
+import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -19,6 +25,21 @@ import static io.github.lmarianski.avraeplus.Main.LEFT_ARROW;
 import static io.github.lmarianski.avraeplus.Main.RIGHT_ARROW;
 
 public class Util {
+
+    public static String GET(URL url, String... opts) throws IOException {
+        return GET(url.toString(), opts);
+    }
+
+    public static String GET(String url, String... opts) throws IOException {
+        List<String> opt = Arrays.asList("curl", url);
+        opt.addAll(Arrays.asList(opts));
+
+        Process p = new ProcessBuilder(
+                opt
+        ).start();
+
+        return IOUtils.toString(p.getInputStream(), StandardCharsets.UTF_8);
+    }
 
     public static Stream<String> paginate(Stream<String> strings, int no) {
         AtomicInteger counter = new AtomicInteger();
