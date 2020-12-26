@@ -36,10 +36,6 @@ public class AvraeClient {
 
             if (t.name == null) {
                 t.name = id;
-//                if (flag) {
-//                    String[] strs = id.split("/");
-//                    t.name=strs[strs.length-1];
-//                }
             }
 
             return t;

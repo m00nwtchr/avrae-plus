@@ -4,6 +4,7 @@ import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpell;
 import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpellCollection;
 import io.github.lmarianski.avraeplus.data.sources.avrae.AvraeClient;
 import io.github.lmarianski.avraeplus.data.sources.fiveetools.FiveEToolsClient;
+import io.github.lmarianski.avraeplus.data.sources.json.JsonClient;
 
 import java.io.IOException;
 import java.net.URL;
@@ -23,7 +24,7 @@ public class SourceManager {
 
     public static ISpellCollection getTome(String source) throws IOException {
         if (isURL(source)) {
-            return null;
+            return JsonClient.getTome(source);
         }
 
         if (source.matches(".*\\d.*") || source.equals("srd")) {

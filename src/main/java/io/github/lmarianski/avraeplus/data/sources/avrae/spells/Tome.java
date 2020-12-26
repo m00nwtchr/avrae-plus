@@ -30,9 +30,6 @@ public class Tome implements ISpellCollection {
 //    @SerializedName("server_active")
 //    public String[] serverActive;
     public AvraeSpell[] spells;
-    @SerializedName("spell_lists")
-//    @JsonAdapter(SpellListMapSerializer.class)
-//    public HashMap<String, ArrayList<String>> spellLists;
 
     @Override
     public String toString() {
@@ -182,17 +179,4 @@ public class Tome implements ISpellCollection {
             return Tome.class;
         }
     }
-
-    public static class SpellListMapSerializer implements JsonSerializer<HashMap<String, ArrayList<String>>>, JsonDeserializer<HashMap<String, ArrayList<String>>> {
-        @Override
-        public HashMap<String, ArrayList<String>> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            return Main.gson.fromJson(json, new TypeToken<HashMap<String, ArrayList<String>>>(){}.getType());
-        }
-
-        @Override
-        public JsonElement serialize(HashMap<String, ArrayList<String>> src, Type typeOfSrc, JsonSerializationContext context) {
-            return Main.gson.toJsonTree(src);
-        }
-    }
-
 }
