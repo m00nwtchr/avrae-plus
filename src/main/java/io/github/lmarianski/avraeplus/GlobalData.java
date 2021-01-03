@@ -53,6 +53,13 @@ public class GlobalData {
         globalData.findOneAndReplace(statsFilter, statsDoc);
     }
 
+    public int getHitsThisMonth() {
+        return statsDoc.getInteger("hitsThisMonth");
+    }
+    public int getHitsLastMonth() {
+        return statsDoc.getInteger("hitsLastMonth");
+    }
+
     public synchronized void incrementHits() {
         int hits = statsDoc.getInteger("hitsThisMonth");
         statsDoc.append("hitsThisMonth", hits+1);

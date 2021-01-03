@@ -201,6 +201,15 @@ public class Main implements CommandExecutor {
         }
     }
 
+    @Command(aliases = {"stats"}, description = "Shows stats")
+    public void showStats(Server server, TextChannel channel, User user) {
+//        if (isManager(user, server)) {
+            channel.sendMessage("Hits this/last month: "+Main.globalData.getHitsThisMonth() + "/"+Main.globalData.getHitsLastMonth()).join();
+//        } else {
+//            channel.sendMessage("You don't have permission to do that!");
+//        }
+    }
+
     public static void onDataChange(Server server, ServerData data) {
 
         serversCollection.findOneAndReplace(new Document("serverId", server.getId()), data);
