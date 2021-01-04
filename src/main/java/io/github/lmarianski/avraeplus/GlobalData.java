@@ -27,10 +27,13 @@ public class GlobalData {
         Main.timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (calendar.get(Calendar.DAY_OF_MONTH) == 1) {
+                Date lastSwap = statsDoc.getDate("lastSwap");
+
+                if (lastSwap == null || calendar.get(Calendar.MONTH) > lastSwap.getMonth()) {
                     int hits = statsDoc.getInteger("hitsThisMonth");
                     statsDoc.append("hitsLastMonth", hits);
                     statsDoc.append("hitsThisMonth", 0);
+                    statsDoc.append("lastSwap", new Date(calendar.getTimeInMillis()));
                     update();
                 }
             }
