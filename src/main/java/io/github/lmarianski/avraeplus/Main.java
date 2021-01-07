@@ -488,10 +488,17 @@ public class Main implements CommandExecutor {
             }
 
             if (schools.size() != 0) {
-                titleBuilder.append(" ");
+                titleBuilder
+                        .append(" ")
+                        .append(schools.get(0).name().toLowerCase(Locale.ROOT));
+
                 schools.forEach(el -> {
-                    titleBuilder
-                            .append(el.name().toLowerCase(Locale.ROOT));
+                    int i = schools.indexOf(el);
+                    if (i != 0) {
+                        titleBuilder
+                                .append(", ")
+                                .append(el.name().toLowerCase(Locale.ROOT));
+                    }
                 });
             }
 
