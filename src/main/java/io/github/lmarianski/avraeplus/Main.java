@@ -362,12 +362,25 @@ public class Main implements CommandExecutor {
         
         String clazz = args.get(0).toLowerCase(Locale.ROOT);
 
-        int tmpLvl = -1;
+        int tmpMinLevel = -1;
+        int tmpMaxLevel = -1;
         try {
-            tmpLvl = Integer.parseInt(args.get(1));
+            String levelSpec = args.get(1);
+
+            if (levelSpec.contains("-")) {
+                String[] split = levelSpec.split("-");
+
+                tmpMinLevel = split[0].equals("") ? -1 : Integer.parseInt(split[0]);
+                tmpMaxLevel = split[1].equals("") ? -1 : Integer.parseInt(split[1]);
+            } else {
+                tmpMaxLevel = Integer.parseInt(levelSpec);
+                tmpMinLevel = tmpMaxLevel;
+            }
         } catch (Exception ignored) {
         }
-        int level = tmpLvl;
+
+        int minLevel = tmpMinLevel;
+        int maxLevel = tmpMaxLevel;
 
         boolean ritualOnly = args.contains("--ritual");
 
@@ -378,9 +391,21 @@ public class Main implements CommandExecutor {
         if (spells != null) {
             Stream<ISpell> spellStream = spells.stream().sorted(Comparator.comparing(ISpell::getLevel).thenComparing(ISpell::getName));//.filter(spellFilter(level != -1, ritualOnly, );
 
-            if (level != -1) {
-                spellStream = spellStream.filter(s -> s.getLevel() == level);
+            boolean flag = false;
+
+            if (minLevel != -1 || maxLevel != -1) {
+                flag = true;
+                if (minLevel == maxLevel) {
+                    spellStream = spellStream.filter(s -> s.getLevel() == minLevel);
+                } else if (minLevel != -1 && maxLevel == -1) {
+                    spellStream = spellStream.filter(s -> s.getLevel() >= minLevel);
+                } else if (minLevel == -1 && maxLevel != -1) {
+                    spellStream = spellStream.filter(s -> s.getLevel() <= maxLevel);
+                } else {
+                    spellStream = spellStream.filter(s -> s.getLevel() >= minLevel && s.getLevel() <= maxLevel);
+                }
             }
+
 
             if (ritualOnly) {
                 spellStream = spellStream.filter(ISpell::isRitual);
@@ -431,7 +456,7 @@ public class Main implements CommandExecutor {
 
             List<String> pages;
 
-            if (level == -1) {
+            if (minLevel != maxLevel) {
                 ArrayList<Map.Entry<Integer, List<ISpell>>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(ISpell::getLevel, Collectors.toList())).entrySet());
                 ArrayList<String> strings = new ArrayList<>();
                 l.forEach((el) -> {
@@ -450,8 +475,16 @@ public class Main implements CommandExecutor {
             }
 
             StringBuilder titleBuilder = new StringBuilder("All");
-            if (level != -1) {
-                titleBuilder.append(" level ").append(level);
+            if (flag) {
+                if (minLevel == maxLevel) {
+                    titleBuilder.append(" level ").append(minLevel);
+                } else if (minLevel != -1 && maxLevel == -1) {
+                    titleBuilder.append(" level ").append(minLevel).append(" and greater");
+                } else if (minLevel == -1) {
+                    titleBuilder.append(" level ").append(maxLevel).append(" and lower");
+                } else {
+                    titleBuilder.append(" level ").append(minLevel).append(" to ").append(maxLevel);
+                }
             }
 
             if (schools.size() != 0) {
@@ -467,10 +500,10 @@ public class Main implements CommandExecutor {
             }
 
             titleBuilder
-                    .append(" spells ");
+                    .append(" spells");
 
             if (!clazz.equalsIgnoreCase("all")) {
-                titleBuilder.append("spells for class");
+                titleBuilder.append(" for class");
 
                 if (!yesClasses.isEmpty()) {
                     titleBuilder.append("es");
