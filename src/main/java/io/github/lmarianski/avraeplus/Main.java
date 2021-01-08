@@ -456,7 +456,7 @@ public class Main implements CommandExecutor {
 
             List<String> pages;
 
-            if (minLevel != maxLevel) {
+            if (minLevel != maxLevel || minLevel == -1) {
                 ArrayList<Map.Entry<Integer, List<ISpell>>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(ISpell::getLevel, Collectors.toList())).entrySet());
                 ArrayList<String> strings = new ArrayList<>();
                 l.forEach((el) -> {
