@@ -80,14 +80,14 @@ public class ServerData {
                     for (String clazz : classes) {
                         clazz = clazz.trim().toLowerCase(Locale.ROOT);
 
-                        if (clazz.contains(" ")) {
-                            String[] c = clazz.split(" ");
-
-                            clazz = c[0];
+//                        if (clazz.contains(" ")) {
+//                            String[] c = clazz.split(" ");
 //
-//                            List<Tome.Spell> list = map.computeIfAbsent(c[1], k -> new ArrayList<>());
-//                            list.add(spell);
-                        }
+//                            clazz = c[0];
+////
+////                            List<Tome.Spell> list = map.computeIfAbsent(c[1], k -> new ArrayList<>());
+////                            list.add(spell);
+//                        }
 
                         List<ISpell> list = map.computeIfAbsent(clazz, k -> new ArrayList<>());
                         list.add(spell);
