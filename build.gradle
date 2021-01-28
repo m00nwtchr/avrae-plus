@@ -65,6 +65,9 @@ dependencies {
 
     compile "org.mariuszgromada.math:MathParser.org-mXparser:4.4.2"
 
+    // https://mvnrepository.com/artifact/io.dropwizard/dropwizard-core
+    compile group: 'io.dropwizard', name: 'dropwizard-core', version: '2.0.18'
+
 }
 
 application {

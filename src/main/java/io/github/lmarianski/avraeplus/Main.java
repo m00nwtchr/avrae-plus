@@ -19,6 +19,8 @@ import io.github.lmarianski.avraeplus.data.sources.SourceManager;
 import io.github.lmarianski.avraeplus.data.SpellSchool;
 import io.github.lmarianski.avraeplus.data.sources.avrae.spells.Tome;
 import io.github.lmarianski.avraeplus.logistics.LogCommands;
+import io.github.lmarianski.avraeplus.rest.RESTApplication;
+import io.github.lmarianski.avraeplus.rest.RESTScaleImageResource;
 import org.apache.commons.text.WordUtils;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistries;
@@ -28,6 +30,7 @@ import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.PermissionState;
 import org.javacord.api.entity.permission.PermissionType;
@@ -37,10 +40,13 @@ import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.listener.server.ServerJoinListener;
 
+import java.awt.*;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.*;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -74,11 +80,17 @@ public class Main implements CommandExecutor {
         bot.updateActivity(bot.getServers().size() + " Servers | " + cmdHandler.getDefaultPrefix() + "help");
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         Map<String, String> env = System.getenv();
 
         gson = new GsonBuilder()
                 .create();
+
+        {
+            if (new File("server.yml").exists()) {
+                new RESTApplication().run("server", "server.yml");
+            }
+        }
 
         {
             bot = new DiscordApiBuilder().setToken(DISCORD_BOT_TOKEN).login().join();
@@ -119,12 +131,6 @@ public class Main implements CommandExecutor {
 
             bot.getServers().forEach(Main::getOrCreateData);
 //            Main.SERVER_DATA_MAP.values().forEach(ServerData::getInvite);
-        }
-
-        {
-
-
-
         }
 
 //        try {
@@ -183,6 +189,23 @@ public class Main implements CommandExecutor {
         synchronized (SERVER_DATA_MAP) {
             return fetch ? SERVER_DATA_MAP.compute(server.getId(), (id,a) -> _fetch(id, server)) : SERVER_DATA_MAP.computeIfAbsent(server.getId(), id -> _fetch(id, server));
         }
+    }
+
+    @Command(aliases = {"emoji"}, description = "E")
+    public void emojiCommand(Server server, TextChannel channel, Message msg) {
+        msg.getCustomEmojis().forEach(e -> {
+            e.getImage().asBufferedImage().thenAccept(img -> {
+                try {
+                    new MessageBuilder()
+                            .setContent(e.getMentionTag()+": ")
+                            .addAttachment(RESTScaleImageResource.toBytes(img.getScaledInstance(48, 48, Image.SCALE_SMOOTH)).toByteArray(), e.getName()+".png")
+                            .send(channel);
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
+                }
+//                channel.sendMessage(, );
+            });
+        });
     }
 
     @Command(aliases = {"rebuild"}, description = "Rebuilds this server's spell database. (Use this to pull changes)")
