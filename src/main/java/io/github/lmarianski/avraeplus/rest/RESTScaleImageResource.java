@@ -1,9 +1,5 @@
 package io.github.lmarianski.avraeplus.rest;
 
-import com.google.common.graph.Graph;
-import javafx.scene.transform.Scale;
-import org.apache.commons.io.IOUtils;
-
 import javax.imageio.ImageIO;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -11,12 +7,10 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.ImageObserver;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
