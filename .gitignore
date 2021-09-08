@@ -11,5 +11,7 @@ bin
 tokens
 tmp
 .idea
+.vscode
+.env
 
 out
