@@ -12,9 +12,8 @@ import static io.github.lmarianski.avraeplus.Main.MAP_STRING_STRING_TYPE;
 
 public class FiveEToolsClient {
 
-    // public static final String API_ENDPOINT = "https://5e.tools/data"; DOWN
-    // TODO: Change back to main 5eTools Site when its up
-    public static final String API_ENDPOINT = "https://5etools-mirror-1.github.io/data";
+    public static final String API_ENDPOINT = "https://5e.tools/data";
+    // public static final String API_ENDPOINT = "https://5etools-mirror-1.github.io/data";
 
     private static final Map<String, String> SOURCES = getIndex();
 
