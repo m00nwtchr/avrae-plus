@@ -5,6 +5,7 @@ import io.github.lmarianski.avraeplus.Util;
 import io.github.lmarianski.avraeplus.data.sources.avrae.spells.Tome;
 import io.github.lmarianski.avraeplus.data.sources.avrae.spells.Tome.AvraeSpell;
 
+import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.Objects;
 
@@ -15,6 +16,9 @@ public class AvraeClient {
     public static final String API_ENDPOINT = "https://api.avrae.io";
 
     private static Tome SRD;
+
+    private static final TypeToken<AvraeApiResponse<AvraeSpell[]>> AVRAE_SRD_RESPONSE_TOKEN = new TypeToken<AvraeApiResponse<AvraeSpell[]>>() {};
+    private static final TypeToken<AvraeApiResponse<Tome>> AVRAE_TOME_RESPONSE_TOKEN = new TypeToken<AvraeApiResponse<Tome>>() {};
 
     static {
         try {
@@ -40,15 +44,16 @@ public class AvraeClient {
             if (id.equalsIgnoreCase("srd")) {
                 apiResponse = new AvraeApiResponse<Tome>();
 
-                AvraeApiResponse<AvraeSpell[]> srdResponse = AvraeApiResponse.fromJSON(response, AvraeSpell[].class);
+                AvraeApiResponse<AvraeSpell[]> srdResponse = AvraeApiResponse.fromJSON(response, AVRAE_SRD_RESPONSE_TOKEN.getType());
 
                 apiResponse.success = srdResponse.success;
                 apiResponse.error = srdResponse.error;
 
                 apiResponse.data = new Tome();
                 apiResponse.data.spells = srdResponse.data;
+            } else {
+                apiResponse = AvraeApiResponse.fromJSON(response, AVRAE_TOME_RESPONSE_TOKEN.getType());
             }
-            apiResponse = AvraeApiResponse.fromJSON(response, Tome.class);
 
             Tome t = apiResponse.data;
 
@@ -75,9 +80,9 @@ public class AvraeClient {
         public String error;
         public T data;
 
-        public static <T> AvraeApiResponse<T> fromJSON(String jsonText, Class<T> clazz) {
+        public static <T> AvraeApiResponse<T> fromJSON(String jsonText, Type type) {
             try {
-                return Main.gson.fromJson(jsonText, (new TypeToken<AvraeApiResponse<T>>() {}).getType());
+                return Main.gson.fromJson(jsonText, type);
             } catch (Exception e) {
                 System.err.println(e);
                 return null;
