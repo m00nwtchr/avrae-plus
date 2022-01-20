@@ -72,7 +72,8 @@ public class Main implements CommandExecutor {
 
     public static Timer timer = new Timer();
 
-    public static final Type MAP_STRING_STRING_TYPE = new TypeToken<Map<String, String>>() {}.getType();
+    public static final Type MAP_STRING_STRING_TYPE = new TypeToken<Map<String, String>>() {
+    }.getType();
 
     public static GlobalData globalData;
 
@@ -109,7 +110,8 @@ public class Main implements CommandExecutor {
         }
 
         {
-            ConnectionString mongoUri = env.containsKey("MONGODB_URI") ? new ConnectionString(env.get("MONGODB_URI")) : null;
+            ConnectionString mongoUri = env.containsKey("MONGODB_URI") ? new ConnectionString(env.get("MONGODB_URI"))
+                    : null;
 
             Tome.TomeCodec tomeCodec = new Tome.TomeCodec();
             ServerData.ServerDataCodec serverDataCodec = new ServerData.ServerDataCodec();
@@ -118,38 +120,42 @@ public class Main implements CommandExecutor {
             CodecRegistry codecRegistry = CodecRegistries.fromRegistries(
                     MongoClientSettings.getDefaultCodecRegistry(),
                     CodecRegistries.fromCodecs(tomeCodec, spellCollectionCodec),
-                    CodecRegistries.fromProviders(PojoCodecProvider.builder().automatic(true).build())
-            );
+                    CodecRegistries.fromProviders(PojoCodecProvider.builder().automatic(true).build()));
 
             mongoClient = mongoUri != null ? MongoClients.create(mongoUri) : MongoClients.create();
-            db = mongoClient.getDatabase(mongoUri != null && mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
+            db = mongoClient.getDatabase(
+                    mongoUri != null && mongoUri.getDatabase() != null ? mongoUri.getDatabase() : "serverTomeDB");
             serversCollection = db.getCollection("servers", ServerData.class).withCodecRegistry(codecRegistry);
 
-//            synchronized (globalData) {
-                globalData = new GlobalData();
-//            }
+            // synchronized (globalData) {
+            globalData = new GlobalData();
+            // }
 
             bot.getServers().forEach(Main::getOrCreateData);
-//            Main.SERVER_DATA_MAP.values().forEach(ServerData::getInvite);
+            // Main.SERVER_DATA_MAP.values().forEach(ServerData::getInvite);
         }
 
-//        try {
-//            System.out.println(GSheetsClient.getRange("1KnzmBGs2CgUoApHe-okcCHDmJDWkxjSKRYM3nQQAzX0","VersionNum").getValues().get(0).get(0));
-//
-//            final ResourceConfig resourceConfig = new ResourceConfig(GSheetResource.class);
-//            final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(URI.create(env.getOrDefault("HOST", "http://localhost")+":"+env.getOrDefault("PORT", "8080")), resourceConfig, false);
-//            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    server.shutdownNow();
-//                }
-//            }));
-//            server.start();
-//
-//            Thread.currentThread().join();
-//        } catch (IOException | InterruptedException ex) {
-//            LOGGER.log(Level.SEVERE, null, ex);
-//        }
+        // try {
+        // System.out.println(GSheetsClient.getRange("1KnzmBGs2CgUoApHe-okcCHDmJDWkxjSKRYM3nQQAzX0","VersionNum").getValues().get(0).get(0));
+        //
+        // final ResourceConfig resourceConfig = new
+        // ResourceConfig(GSheetResource.class);
+        // final HttpServer server =
+        // GrizzlyHttpServerFactory.createHttpServer(URI.create(env.getOrDefault("HOST",
+        // "http://localhost")+":"+env.getOrDefault("PORT", "8080")), resourceConfig,
+        // false);
+        // Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+        // @Override
+        // public void run() {
+        // server.shutdownNow();
+        // }
+        // }));
+        // server.start();
+        //
+        // Thread.currentThread().join();
+        // } catch (IOException | InterruptedException ex) {
+        // LOGGER.log(Level.SEVERE, null, ex);
+        // }
     }
 
     public static boolean hasRole(String string, User user, Server server) {
@@ -159,26 +165,27 @@ public class Main implements CommandExecutor {
     }
 
     public static boolean isManager(User user, Server server) {
-        return bot.getOwnerId() == user.getId() || hasRole("Server Brewer", user, server) || server.getPermissions(user).getState(PermissionType.MANAGE_SERVER) == PermissionState.ALLOWED;
+        return bot.getOwnerId() == user.getId() || hasRole("Server Brewer", user, server)
+                || server.getPermissions(user).getState(PermissionType.MANAGE_SERVER) == PermissionState.ALLOWED;
     }
 
     private static ServerData _fetch(long id, Server server) {
-            Document doc = new Document("serverId", id);
-            ServerData data;
+        Document doc = new Document("serverId", id);
+        ServerData data;
 
-            if (serversCollection.countDocuments(doc) == 0) {
-                data = new ServerData(server);
+        if (serversCollection.countDocuments(doc) == 0) {
+            data = new ServerData(server);
 
-                serversCollection.insertOne(data);
-            } else {
-                data = Objects.requireNonNull(serversCollection.find(doc).limit(1).first());
-                data.server = server;
-                data.serverId = id;
-            }
+            serversCollection.insertOne(data);
+        } else {
+            data = Objects.requireNonNull(serversCollection.find(doc).limit(1).first());
+            data.server = server;
+            data.serverId = id;
+        }
 
-            data.buildSpellMap();
+        data.buildSpellMap();
 
-            return data;
+        return data;
     }
 
     public static ServerData getOrCreateData(Server server) {
@@ -187,28 +194,31 @@ public class Main implements CommandExecutor {
 
     public static synchronized ServerData getOrCreateData(Server server, boolean fetch) {
         synchronized (SERVER_DATA_MAP) {
-            return fetch ? SERVER_DATA_MAP.compute(server.getId(), (id,a) -> _fetch(id, server)) : SERVER_DATA_MAP.computeIfAbsent(server.getId(), id -> _fetch(id, server));
+            return fetch ? SERVER_DATA_MAP.compute(server.getId(), (id, a) -> _fetch(id, server))
+                    : SERVER_DATA_MAP.computeIfAbsent(server.getId(), id -> _fetch(id, server));
         }
     }
 
-    @Command(aliases = {"emoji"}, description = "E")
+    @Command(aliases = { "emoji" }, description = "E")
     public void emojiCommand(Server server, TextChannel channel, Message msg) {
         msg.getCustomEmojis().forEach(e -> {
             e.getImage().asBufferedImage().thenAccept(img -> {
                 try {
                     new MessageBuilder()
-                            .setContent(e.getMentionTag()+": ")
-                            .addAttachment(RESTScaleImageResource.toBytes(img.getScaledInstance(48, 48, Image.SCALE_SMOOTH)).toByteArray(), e.getName()+".png")
+                            .setContent(e.getMentionTag() + ": ")
+                            .addAttachment(RESTScaleImageResource
+                                    .toBytes(img.getScaledInstance(48, 48, Image.SCALE_SMOOTH)).toByteArray(),
+                                    e.getName() + ".png")
                             .send(channel);
                 } catch (IOException ioException) {
                     ioException.printStackTrace();
                 }
-//                channel.sendMessage(, );
+                // channel.sendMessage(, );
             });
         });
     }
 
-    @Command(aliases = {"rebuild"}, description = "Rebuilds this server's spell database. (Use this to pull changes)")
+    @Command(aliases = { "rebuild" }, description = "Rebuilds this server's spell database. (Use this to pull changes)")
     public void rebuildSpellMap(Server server, TextChannel channel, User user) {
         if (isManager(user, server)) {
             ServerData serverData = getOrCreateData(server, true);
@@ -218,19 +228,21 @@ public class Main implements CommandExecutor {
 
             long spellCount = serverData.spellMap.get("all").size();
 
-            msg.edit("Done, " + serverData.spellMap.size() + " classes found, with a total of " + spellCount + " spells");
+            msg.edit("Done, " + serverData.spellMap.size() + " classes found, with a total of " + spellCount
+                    + " spells");
         } else {
             channel.sendMessage("You don't have permission to do that!");
         }
     }
 
-    @Command(aliases = {"stats"}, description = "Shows stats")
+    @Command(aliases = { "stats" }, description = "Shows stats")
     public void showStats(Server server, TextChannel channel, User user) {
-//        if (isManager(user, server)) {
-            channel.sendMessage("Hits this/last month: "+Main.globalData.getHitsThisMonth() + "/"+Main.globalData.getHitsLastMonth()).join();
-//        } else {
-//            channel.sendMessage("You don't have permission to do that!");
-//        }
+        // if (isManager(user, server)) {
+        channel.sendMessage("Hits this/last month: " + Main.globalData.getHitsThisMonth() + "/"
+                + Main.globalData.getHitsLastMonth()).join();
+        // } else {
+        // channel.sendMessage("You don't have permission to do that!");
+        // }
     }
 
     public static void onDataChange(Server server, ServerData data) {
@@ -238,7 +250,6 @@ public class Main implements CommandExecutor {
         serversCollection.findOneAndReplace(new Document("serverId", server.getId()), data);
 
     }
-
 
     public static boolean addTome(Server server, ISpellCollection tome) {
         ServerData data = getOrCreateData(server);
@@ -263,7 +274,6 @@ public class Main implements CommandExecutor {
         }
     }
 
-
     // @Command(aliases = "stats", description = "Bot stats")
     // public void statCommand(TextChannel channel) {
     // channel.sendMessage("# of servers: "+bot.getServers().size(););
@@ -274,70 +284,64 @@ public class Main implements CommandExecutor {
         return bot.createBotInvite(new PermissionsBuilder().setAllowed(
                 PermissionType.SEND_MESSAGES,
                 PermissionType.ADD_REACTIONS,
-                PermissionType.MANAGE_MESSAGES
-        ).build());
+                PermissionType.MANAGE_MESSAGES).build());
     }
 
     @Command(aliases = "addtome", usage = "addtome <tomeid>", description = "Adds a tome to this bots database for this server")
-    public void onAddTomeCommand(String name, String tomeid, User user, Server server, TextChannel channel) throws IOException {
+    public void onAddTomeCommand(String name, String tomeid, User user, Server server, TextChannel channel)
+            throws IOException {
         if (isManager(user, server)) {
-            ISpellCollection tome = SourceManager.getTome(tomeid);
+            SourceManager.getTome(tomeid).ifPresent(tome -> {
+                if (tome == null) {
+                    channel.sendMessage(new EmbedBuilder()
+                            .setDescription("Invalid tome id!"));
+                    return;
+                }
 
+                if (addTome(server, tome)) {
+                    channel.sendMessage(new EmbedBuilder()
+                            .setTitle(tome.getName())
+                            .setDescription("Tome added!")
+                            .setUrl("https://avrae.io/homebrew/spells/" + tome.getId())
+                            .setImage(tome.getImage()));
 
-//            ServerData serverData = getOrCreateData(server);
+                    getOrCreateData(server, true);
+                } else {
+                    channel.sendMessage(new EmbedBuilder()
+                            .setDescription("Tome is already added!"));
+                }
+            });
 
-            if (tome == null) {
-                channel.sendMessage(new EmbedBuilder()
-                        .setDescription("Invalid tome id!")
-                );
-                return;
-            }
-
-            if (addTome(server, tome)) {
-                channel.sendMessage(new EmbedBuilder()
-                        .setTitle(tome.getName())
-                        .setDescription("Tome added!")
-                        .setUrl("https://avrae.io/homebrew/spells/" + tome.getId())
-                        .setImage(tome.getImage())
-                );
-
-                getOrCreateData(server, true);
-            } else {
-                channel.sendMessage(new EmbedBuilder()
-                        .setDescription("Tome is already added!")
-                );
-            }
         } else {
             channel.sendMessage("You don't have permission to do that!");
         }
     }
 
-    @Command(aliases = {"removetome", "rmtome"}, usage = "rmtome <tomeid>", description = "Removes a tome from this bots database for this server")
+    @Command(aliases = { "removetome",
+            "rmtome" }, usage = "rmtome <tomeid>", description = "Removes a tome from this bots database for this server")
     public void onRemoveTome(String[] args, User user, Server server, TextChannel channel) throws Exception {
         if (isManager(user, server)) {
-            ISpellCollection tome = SourceManager.getTome(args[0]);
-            ServerData serverData = getOrCreateData(server);
+            SourceManager.getTome(args[0]).ifPresent(tome -> {
+                ServerData serverData = getOrCreateData(server);
 
-            if (tome == null) {
-                channel.sendMessage(new EmbedBuilder()
-                        .setDescription("Invalid tome id!")
-                );
-                return;
-            }
-
-            if (removeTome(server, tome)) {
-                channel.sendMessage(new EmbedBuilder()
-                        .setTitle(tome.getName())
-                        .setDescription("Tome removed!")
-                );
-
-                getOrCreateData(server, true);
-            } else {
-                channel.sendMessage(new EmbedBuilder()
-                        .setTitle(tome.getName())
-                        .setDescription("Tome is not added!")
-                );
-            }
+                if (tome == null) {
+                    channel.sendMessage(new EmbedBuilder()
+                            .setDescription("Invalid tome id!"));
+                    return;
+                }
+    
+                if (removeTome(server, tome)) {
+                    channel.sendMessage(new EmbedBuilder()
+                            .setTitle(tome.getName())
+                            .setDescription("Tome removed!"));
+    
+                    getOrCreateData(server, true);
+                } else {
+                    channel.sendMessage(new EmbedBuilder()
+                            .setTitle(tome.getName())
+                            .setDescription("Tome is not added!"));
+                }
+            });
         } else {
             channel.sendMessage("You don't have permission to do that!");
         }
@@ -353,36 +357,38 @@ public class Main implements CommandExecutor {
         return url.getProtocol().matches("http(s)");
     }
 
-    @Command(aliases = {"listtomes", "lstomes"}, description = "Adds a tome to this bots database for this server")
+    @Command(aliases = { "listtomes", "lstomes" }, description = "Adds a tome to this bots database for this server")
     public void onListTomes(Server server, TextChannel channel) {
         ServerData data = getOrCreateData(server);
         channel.sendMessage(new EmbedBuilder()
                 .setDescription(
                         data.tomes.stream()
-                                .map(tome -> tome.getName() + " ("+ (isURL(tome.getId()) ? "" : "https://avrae.io/homebrew/spells/") + tome.getId() + ")")
-                                .collect(Collectors.joining("\n"))
-                ));
+                                .map(tome -> tome.getName() + " ("
+                                        + (isURL(tome.getId()) ? "" : "https://avrae.io/homebrew/spells/")
+                                        + tome.getId() + ")")
+                                .collect(Collectors.joining("\n"))));
     }
 
-//    public static Predicate<Tome.Spell> spellFilter(boolean level, boolean ritualOnly, List<String> notClasses) {
-//        if (ritualOnly) {
-//            return spell -> {
-//                return
-//            }
-//        } else {
-//            return spell -> {
-//
-//            }
-//        }
-//    }
+    // public static Predicate<Tome.Spell> spellFilter(boolean level, boolean
+    // ritualOnly, List<String> notClasses) {
+    // if (ritualOnly) {
+    // return spell -> {
+    // return
+    // }
+    // } else {
+    // return spell -> {
+    //
+    // }
+    // }
+    // }
 
-
-    @Command(aliases = {"spelllist", "spells", "sl"}, usage = "sl <class> [level] [--ritual] [--!<classname>] [--<schoolname>] [-S<searchTerm>]", description = "Lists spells for that class and level")
+    @Command(aliases = { "spelllist", "spells",
+            "sl" }, usage = "sl <class> [level] [--ritual] [--!<classname>] [--<schoolname>] [-S<searchTerm>]", description = "Lists spells for that class and level")
     public void onSpellListCommand(String[] argz, Server server, TextChannel channel, User user) {
         ArrayList<String> args = new ArrayList<>(Arrays.asList(argz));
 
         globalData.incrementHits();
-        
+
         String clazz = args.get(0).toLowerCase(Locale.ROOT);
 
         int tmpMinLevel = -1;
@@ -412,7 +418,10 @@ public class Main implements CommandExecutor {
         List<ISpell> spells = serverData.spellMap.get(clazz);
 
         if (spells != null) {
-            Stream<ISpell> spellStream = spells.stream().sorted(Comparator.comparing(ISpell::getLevel).thenComparing(ISpell::getName));//.filter(spellFilter(level != -1, ritualOnly, );
+            Stream<ISpell> spellStream = spells.stream()
+                    .sorted(Comparator.comparing(ISpell::getLevel).thenComparing(ISpell::getName));// .filter(spellFilter(level
+                                                                                                   // != -1, ritualOnly,
+                                                                                                   // );
 
             boolean flag = false;
 
@@ -428,7 +437,6 @@ public class Main implements CommandExecutor {
                     spellStream = spellStream.filter(s -> s.getLevel() >= minLevel && s.getLevel() <= maxLevel);
                 }
             }
-
 
             if (ritualOnly) {
                 spellStream = spellStream.filter(ISpell::isRitual);
@@ -460,12 +468,14 @@ public class Main implements CommandExecutor {
 
             if (notClasses.size() != 0) {
                 spellStream = spellStream
-                        .filter(s -> notClasses.stream().noneMatch(st -> s.getClassString().toLowerCase(Locale.ROOT).contains(st)));
+                        .filter(s -> notClasses.stream()
+                                .noneMatch(st -> s.getClassString().toLowerCase(Locale.ROOT).contains(st)));
             }
 
             if (yesClasses.size() != 0) {
                 spellStream = spellStream
-                        .filter(s -> yesClasses.stream().allMatch(st -> s.getClassString().toLowerCase(Locale.ROOT).contains(st)));
+                        .filter(s -> yesClasses.stream()
+                                .allMatch(st -> s.getClassString().toLowerCase(Locale.ROOT).contains(st)));
             }
 
             if (schools.size() != 0) {
@@ -474,13 +484,15 @@ public class Main implements CommandExecutor {
             }
 
             if (searchTerms.size() != 0) {
-                spellStream = spellStream.filter(s->Arrays.stream(s.getDescription().split(" ")).anyMatch(searchTerms::contains));
+                spellStream = spellStream
+                        .filter(s -> Arrays.stream(s.getDescription().split(" ")).anyMatch(searchTerms::contains));
             }
 
             List<String> pages;
 
             if (minLevel != maxLevel || minLevel == -1) {
-                ArrayList<Map.Entry<Integer, List<ISpell>>> l = new ArrayList<>(spellStream.collect(Collectors.groupingBy(ISpell::getLevel, Collectors.toList())).entrySet());
+                ArrayList<Map.Entry<Integer, List<ISpell>>> l = new ArrayList<>(
+                        spellStream.collect(Collectors.groupingBy(ISpell::getLevel, Collectors.toList())).entrySet());
                 ArrayList<String> strings = new ArrayList<>();
                 l.forEach((el) -> {
                     el.getValue().sort(Comparator.comparing(ISpell::getName));
@@ -550,8 +562,9 @@ public class Main implements CommandExecutor {
                         titleBuilder
                                 .append(", ")
                                 .append(
-                                        WordUtils.capitalizeFully(String.join(", ", yesClasses.subList(0, yesClasses.size() - 1)))
-                                ).append(" and ")
+                                        WordUtils.capitalizeFully(
+                                                String.join(", ", yesClasses.subList(0, yesClasses.size() - 1))))
+                                .append(" and ")
                                 .append(WordUtils.capitalizeFully(yesClasses.get(yesClasses.size() - 1)));
                     }
                 }
@@ -560,11 +573,11 @@ public class Main implements CommandExecutor {
             if (notClasses.size() > 0) {
                 titleBuilder.append(", excluding ")
                         .append(
-                                WordUtils.capitalizeFully(String.join(", ", notClasses.size() == 1 ? notClasses : notClasses.subList(0, notClasses.size()-1)))
-                        );
+                                WordUtils.capitalizeFully(String.join(", ", notClasses.size() == 1 ? notClasses
+                                        : notClasses.subList(0, notClasses.size() - 1))));
                 if (notClasses.size() > 1)
                     titleBuilder.append(", and ")
-                            .append(WordUtils.capitalizeFully(notClasses.get(notClasses.size()-1)));
+                            .append(WordUtils.capitalizeFully(notClasses.get(notClasses.size() - 1)));
 
                 titleBuilder.append(" spells");
             }
@@ -575,77 +588,82 @@ public class Main implements CommandExecutor {
 
             String title = titleBuilder.toString();
 
-
             EmbedBuilder embed = new EmbedBuilder()
                     .setTitle(title)
-//                    .setDescription(pages.get(0))
-//                    .setFooter("Page 1 out of " + pages.size())
+                    // .setDescription(pages.get(0))
+                    // .setFooter("Page 1 out of " + pages.size())
                     .setAuthor(user);
 
             Message msg = Util.sendPaginatedMessage(channel, user, embed, pages).join();
-//
-//            Message msg = channel.sendMessage(embed).join();
-//            msg.addReactions(LEFT_ARROW, RIGHT_ARROW).join();
-//
-//            AtomicInteger pageIndex = new AtomicInteger();
-//
-//            ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e -> e.getUser().ifPresent((u) -> {
-//                if (!u.isYourself()) e.removeReaction();
-//                if (u.equals(user)) {
-//                    int pageIndexx = pageIndex.get();
-//
-//                    if (e.getEmoji().asUnicodeEmoji().isPresent()) {
-//                        switch (e.getEmoji().asUnicodeEmoji().get()) {
-//                            case (LEFT_ARROW):
-//                                pageIndexx--;
-//                                break;
-//                            case (RIGHT_ARROW):
-//                                pageIndexx++;
-//                                break;
-//                        }
-//
-//                        pageIndexx = (pageIndexx < 0) ? 0 : ((pageIndexx >= pages.size()) ? (pages.size() - 1) : pageIndexx);
-//
-//                        if (pageIndex.get() != pageIndexx) {
-//                            e.editMessage(new EmbedBuilder()
-//                                    .setTitle(title)
-//                                    .setDescription(pages.get(pageIndexx))
-//                                    .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
-//                                    .setAuthor(user)
-//                            );
-//                        }
-//
-//                        pageIndex.set(pageIndexx);
-//                    }
-//                }
-//            }));
-//
-//            listener.removeAfter(5, TimeUnit.MINUTES).addRemoveHandler(() -> {
-//                msg.edit(new EmbedBuilder()
-//                        .setTitle(title)
-//                        .setDescription("Expired!")
-//                        .setAuthor(user)
-//                );
-//                msg.removeAllReactions();
-//            });
+            //
+            // Message msg = channel.sendMessage(embed).join();
+            // msg.addReactions(LEFT_ARROW, RIGHT_ARROW).join();
+            //
+            // AtomicInteger pageIndex = new AtomicInteger();
+            //
+            // ListenerManager<ReactionAddListener> listener = msg.addReactionAddListener(e
+            // -> e.getUser().ifPresent((u) -> {
+            // if (!u.isYourself()) e.removeReaction();
+            // if (u.equals(user)) {
+            // int pageIndexx = pageIndex.get();
+            //
+            // if (e.getEmoji().asUnicodeEmoji().isPresent()) {
+            // switch (e.getEmoji().asUnicodeEmoji().get()) {
+            // case (LEFT_ARROW):
+            // pageIndexx--;
+            // break;
+            // case (RIGHT_ARROW):
+            // pageIndexx++;
+            // break;
+            // }
+            //
+            // pageIndexx = (pageIndexx < 0) ? 0 : ((pageIndexx >= pages.size()) ?
+            // (pages.size() - 1) : pageIndexx);
+            //
+            // if (pageIndex.get() != pageIndexx) {
+            // e.editMessage(new EmbedBuilder()
+            // .setTitle(title)
+            // .setDescription(pages.get(pageIndexx))
+            // .setFooter("Page " + (pageIndexx + 1) + " out of " + pages.size())
+            // .setAuthor(user)
+            // );
+            // }
+            //
+            // pageIndex.set(pageIndexx);
+            // }
+            // }
+            // }));
+            //
+            // listener.removeAfter(5, TimeUnit.MINUTES).addRemoveHandler(() -> {
+            // msg.edit(new EmbedBuilder()
+            // .setTitle(title)
+            // .setDescription("Expired!")
+            // .setAuthor(user)
+            // );
+            // msg.removeAllReactions();
+            // });
 
         } else {
             channel.sendMessage("Error: Unknown class");
         }
     }
 
-    @Command(aliases = {"support"}, usage = "support", description = "For when the bot is going crazy")
+    @Command(aliases = { "support" }, usage = "support", description = "For when the bot is going crazy")
     public void onSupport(String[] cmd, User user, TextChannel channel) {
         User owner = bot.getOwner().join();
-//        System.out.println(String.join(" ", cmd));
-        channel.sendMessage("Hi! "+owner.getMentionTag() + " made this bot, if he's here he'll get to you ASAP, otherwise you can shoot him a DM! (GMT+1 Timezone)").join();
+        // System.out.println(String.join(" ", cmd));
+        channel.sendMessage("Hi! " + owner.getMentionTag()
+                + " made this bot, if he's here he'll get to you ASAP, otherwise you can shoot him a DM! (GMT+1 Timezone)")
+                .join();
     }
 
-//
-//    @Command(aliases = {"forecast", "fc"}, usage = "forecast", description = "Lists spells for that class and level")
-//    public void onForecast(String cmd, Server server, User user, TextChannel channel, Message message) {
-//
-//    }
+    //
+    // @Command(aliases = {"forecast", "fc"}, usage = "forecast", description =
+    // "Lists spells for that class and level")
+    // public void onForecast(String cmd, Server server, User user, TextChannel
+    // channel, Message message) {
+    //
+    // }
 
-//   ive 
+    // ive
 }

@@ -49,6 +49,8 @@ public class ServerData {
                 .stream()
                     .filter(el -> !el.startsWith("UA"))
                     .map(FiveEToolsClient::getSource)
+                    .filter(el -> el.isPresent())
+                    .map(el -> el.get())
                     .collect(Collectors.toList())
         );
 
