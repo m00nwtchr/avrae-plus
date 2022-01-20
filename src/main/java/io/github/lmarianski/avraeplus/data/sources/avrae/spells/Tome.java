@@ -166,7 +166,7 @@ public class Tome implements ISpellCollection {
 
         @Override
         public Tome decode(BsonReader reader, DecoderContext decoderContext) {
-            return AvraeClient.getTome(reader.readString());
+            return (Tome) AvraeClient.getTome(reader.readString()).get();
         }
 
         @Override

@@ -51,7 +51,7 @@ public interface ISpellCollection {
 //            clazz.getMethod("fromMongo")
 //
             try {
-                return SourceManager.getTome(stringCodec.decode(reader, decoderContext));
+                return SourceManager.getTome(stringCodec.decode(reader, decoderContext)).get();
             } catch (IOException e) {
                 e.printStackTrace();
             }

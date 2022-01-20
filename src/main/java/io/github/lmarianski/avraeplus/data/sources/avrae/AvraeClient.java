@@ -2,12 +2,14 @@ package io.github.lmarianski.avraeplus.data.sources.avrae;
 
 import io.github.lmarianski.avraeplus.Main;
 import io.github.lmarianski.avraeplus.Util;
+import io.github.lmarianski.avraeplus.data.interfaces.spells.ISpellCollection;
 import io.github.lmarianski.avraeplus.data.sources.avrae.spells.Tome;
 import io.github.lmarianski.avraeplus.data.sources.avrae.spells.Tome.AvraeSpell;
 
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.Objects;
+import java.util.Optional;
 
 import com.google.gson.reflect.TypeToken;
 
@@ -30,11 +32,11 @@ public class AvraeClient {
     public static Tome getSRD() {
         if (SRD != null)
             return SRD;
-        SRD = Objects.requireNonNull(getTome("srd"));
+        SRD = (Tome) getTome("srd").get();
         return SRD;
     }
 
-    public static Tome getTome(String id) {
+    public static Optional<ISpellCollection> getTome(String id) {
         try {
             URL url = new URL(API_ENDPOINT+"/homebrew/spells/"+id);
 
@@ -67,11 +69,11 @@ public class AvraeClient {
                 t.name = id;
             }
 
-            return t;
+            return Optional.of(t);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return null;
+        return Optional.empty();
     }
 
 

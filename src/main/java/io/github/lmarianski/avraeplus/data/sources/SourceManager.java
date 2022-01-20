@@ -8,6 +8,7 @@ import io.github.lmarianski.avraeplus.data.sources.json.JsonClient;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.Optional;
 
 public class SourceManager {
 
@@ -22,13 +23,13 @@ public class SourceManager {
     }
 
 
-    public static ISpellCollection getTome(String source) throws IOException {
+    public static Optional<ISpellCollection> getTome(String source) throws IOException {
         if (isURL(source)) {
             return JsonClient.getTome(source);
         }
 
         if (source.matches(".*\\d.*") || source.equals("srd")) {
-            return source.equals("srd") ? AvraeClient.getSRD() : AvraeClient.getTome(source);
+            return source.equals("srd") ? Optional.of(AvraeClient.getSRD()) : AvraeClient.getTome(source);
         } else {
             return FiveEToolsClient.getSource(source);
         }
